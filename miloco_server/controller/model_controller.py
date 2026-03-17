@@ -9,7 +9,7 @@ Implements CRUD interfaces for third-party models
 from fastapi import APIRouter, Depends
 from miloco_server.service.manager import get_manager
 from miloco_server.schema.common_schema import NormalResponse
-from miloco_server.schema.model_schema import ModelsList, ThirdPartyModelCreate, ThirdPartyModelInfo, ThirdPartyModelVendor, ModelPurposeInfo, ModelLoadRequest
+from miloco_server.schema.model_schema import ModelsList, ThirdPartyModelCreate, ThirdPartyModelInfo, ThirdPartyModelVendor, ModelPurposeInfo
 from miloco_server.middleware import verify_token
 import logging
 from miloco_server.utils.local_models import ModelPurpose
@@ -167,30 +167,3 @@ async def set_current_model(purpose: str,
     return NormalResponse(code=0, message="Current model set successfully", data=None)
 
 
-@router.post("/load", summary="load/unload local model", response_model=NormalResponse)
-async def load_or_unload_local_model(request: ModelLoadRequest,
-                                     current_user: str = Depends(verify_token)
-                                     ):
-    """
-    load/unload local model
-    - Requires admin permissions
-    - loaded: True to load, False to unload
-    - model_name: model name
-    """
-    logger.info(
-        "Load or unload local model API called - User: %s, Model ID: %s, Loaded: %s",
-        current_user, request.local_model_name, request.load)
-
-    await manager.model_service.load_or_unload_local_model(request.local_model_name, request.load)
-    return NormalResponse(code=0, message="Load/Unload local model successfully", data=None)
-
-
-@router.get("/get_cuda_info", summary="get CUDA info", response_model=NormalResponse)
-async def get_cuda_info(current_user: str = Depends(verify_token)):
-    """
-    get CUDA info
-    - Requires admin permissions
-    """
-    logger.info("Get CUDA info API called - User: %s", current_user)
-    result = await manager.model_service.get_local_cuda_info()
-    return NormalResponse(code=0, message="Get CUDA info successfully", data=result)

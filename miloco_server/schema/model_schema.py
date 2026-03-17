@@ -11,10 +11,6 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 
-class ModelLoadRequest(BaseModel):
-    local_model_name: str = Field(..., description="Local model name")
-    load: bool = Field(..., description="Whether to load")
-
 class ThirdPartyModelVendor(BaseModel):
     base_url: str = Field(..., description="Base URL, reference OpenAI, https://api.openai.com/v1")
     api_key: str = Field(..., description="API key")

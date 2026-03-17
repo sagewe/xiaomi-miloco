@@ -77,12 +77,6 @@ JWT_CONFIG = {
     "access_token_expire_minutes": _config["jwt"]["access_token_expire_minutes"],
 }
 
-# Local model configuration
-LOCAL_MODEL_CONFIG = {
-    "host": os.getenv("AI_ENGINE_HOST", None) or _config["local_model"]["host"],
-    "port": int(os.getenv("AI_ENGINE_PORT", None) or _config["local_model"]["port"])
-}
-
 # Chat configuration
 CHAT_CONFIG = {
     "agent_max_steps": _config["chat"]["agent_max_steps"],

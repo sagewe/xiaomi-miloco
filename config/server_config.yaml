@@ -37,11 +37,6 @@ jwt:
   algorithm: "HS256"
   access_token_expire_minutes: 1440  #minutes
 
-# Local model configuration
-local_model:
-  host: "0.0.0.0"
-  port: 8001
-
 # Chat configuration
 chat:
   agent_max_steps: 10

@@ -51,7 +51,9 @@ async def catch_all_exceptions_middleware(request: Request, call_next):
         return handle_exception(request, exc)
 
 
-app.mount("/assets", StaticFiles(directory=str(STATIC_DIR / "assets")), name="assets")
+_assets_dir = STATIC_DIR / "assets"
+if _assets_dir.exists():
+    app.mount("/assets", StaticFiles(directory=str(_assets_dir)), name="assets")
 app.mount("/static/camera/images", AuthStaticFiles(directory=str(IMAGE_DIR)), name="images")
 app.include_router(web_router)
 app.include_router(auth_router, prefix="/api")
