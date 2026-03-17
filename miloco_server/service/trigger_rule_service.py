@@ -12,7 +12,6 @@ from fastapi import WebSocket
 from miot.types import MIoTCameraInfo
 from miloco_server.schema.mcp_schema import MCPClientStatus, choose_mcp_list
 
-from miloco_server import actor_system
 from miloco_server.dao.trigger_dao import TriggerRuleDAO
 from miloco_server.dao.trigger_rule_log_dao import TriggerRuleLogDAO
 from miloco_server.mcp.mcp_client_manager import MCPClientManager
@@ -30,7 +29,6 @@ from miloco_server.schema.trigger_schema import (
 from miloco_server.service.trigger_rule_runner import TriggerRuleRunner
 
 from miloco_server.service import trigger_rule_dynamic_executor_cache
-from miloco_server.service.trigger_rule_dynamic_executor import RegisterWebSocket
 
 logger = logging.getLogger(__name__)
 
@@ -297,8 +295,7 @@ class TriggerRuleService:
         elif rule_id:
             trigger_rule_dynamic_executor = trigger_rule_dynamic_executor_cache.get(rule_id)
             if trigger_rule_dynamic_executor:
-                register_web_socket = RegisterWebSocket(websocket)
-                actor_system.tell(trigger_rule_dynamic_executor, register_web_socket)
+                await trigger_rule_dynamic_executor.attach_websocket(websocket)
                 return
             else:
                 raise ResourceNotFoundException(

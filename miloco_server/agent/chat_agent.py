@@ -4,15 +4,13 @@
 """Chat Agent"""
 import json
 import logging
-from typing import AsyncGenerator, Any, Optional
+from typing import AsyncGenerator, Any, Callable, Optional
 
 from openai.types.chat import ChatCompletionChunk
 from openai.types.chat.chat_completion_chunk import ChoiceDeltaToolCall
 from openai.types.chat.chat_completion_message_tool_call import ChatCompletionMessageToolCall
 from openai.types.chat.chat_completion_tool_param import ChatCompletionToolParam
-from thespian.actors import Actor, ActorAddress, ActorExitRequest
 
-from miloco_server import actor_system
 from miloco_server.config import PromptConfig, CHAT_CONFIG
 from miloco_server.config.prompt_config import PromptType, UserLanguage
 from miloco_server.middleware.exceptions import LLMServiceException, ResourceNotFoundException
@@ -26,32 +24,29 @@ from miloco_server.utils.local_models import ModelPurpose
 logger = logging.getLogger(__name__)
 
 
-class ChatAgent(Actor):
+class ChatAgent:
     """
     Chat Agent implementation - ReActAgent based on think-act-observe loop
-    
+
     This agent can:
     1. Analyze user queries
     2. Execute operations through tool calls
     3. Provide final answers based on results
-    
-    Refactored using thespian Actor model for better concurrency and state isolation
     """
 
     def __init__(
         self,
         request_id: str,
-        out_actor_address: ActorAddress,
+        send_instruction_fn: Callable,
         chat_history_messages: Optional[ChatHistoryMessages] = None,
     ):
-        """Initialize ReAct agent Actor.
+        """Initialize ReAct agent.
 
         Args:
             request_id: Unique identifier for the request.
-            out_actor_address: Address of the out actor.
-            chat_history_messages_json: JSON string containing chat history.
+            send_instruction_fn: Callable to send instruction payloads upstream.
+            chat_history_messages: Optional prior chat history.
         """
-        super().__init__()
         from miloco_server.service.manager import get_manager  # pylint: disable=import-outside-toplevel
         self._manager = get_manager()
 
@@ -61,13 +56,13 @@ class ChatAgent(Actor):
             ModelPurpose.PLANNING)
         self._language = self._manager.auth_service.get_user_language(
         ).language
-        logger.info("[%s] LLM proxy: %s",self._request_id, self._llm_proxy)
+        logger.info("[%s] LLM proxy: %s", self._request_id, self._llm_proxy)
         self._tool_executor = self._manager.tool_executor
         self._local_default_mcp_tools_meta = []
         self._other_mcp_tools_meta = []
         self._all_mcp_tools_meta = []
 
-        self._out_actor_address = out_actor_address
+        self._send_instruction_fn = send_instruction_fn
         self._max_steps = CHAT_CONFIG["agent_max_steps"]
 
         self._init_conversation(chat_history_messages)
@@ -75,7 +70,7 @@ class ChatAgent(Actor):
         self._chat_companion.set_chat_data(
             self._request_id,
             ChatCachedData(
-                out_actor_address=self._out_actor_address,
+                send_instruction=self._send_instruction_fn,
             ))
 
         logger.info("[%s] ChatAgent initialized", self._request_id)
@@ -124,27 +119,8 @@ class ChatAgent(Actor):
             self._chat_history_messages.add_content("system",
                                                     self._get_system_prompt())
 
-    def receiveMessage(self, msg, sender):
-        """
-        Actor message receiving method, handles received messages.
-
-        Args:
-            message: The message received.
-            sender: The sender of the message.
-        """
-        if isinstance(msg, Event):
-            self._handle_event(msg)
-        elif isinstance(msg, ActorExitRequest):
-            logger.info("[%s] ChatAgent ActorExitRequest received",
-                        self._request_id)
-            self._handle_exit_request()
-        else:
-            logger.warning("[%s] Unsupported message: %s", self._request_id,
-                           msg)
-
-
-    def _handle_event(self, event: Event) -> None:
-        """Handle event."""
+    def handle_event(self, event: Event) -> None:
+        """Handle an incoming event."""
         logger.info("[%s] handle_event: %s", self._request_id, event)
         try:
             self._parse_and_handle_event(event)
@@ -307,8 +283,8 @@ class ChatAgent(Actor):
         return finish_reason, tool_calls, content_stream
 
     def _send_instruction(self, instruction_payload: InstructionPayload):
-        """Send instruction to transceiver actor."""
-        actor_system.tell(self._out_actor_address, instruction_payload)
+        """Send instruction upstream via the registered callable."""
+        self._send_instruction_fn(instruction_payload)
 
     def _send_dialog_finish(self, success: bool):
         """Send dialog finish instruction."""
@@ -468,7 +444,7 @@ class ChatAgent(Actor):
         return PromptConfig.get_system_prompt(PromptType.CHAT,
                                               UserLanguage(self._language))
 
-    def _handle_exit_request(self):
-        """Handle Actor exit request."""
-        logger.info("[%s] ChatAgent handling exit request", self._request_id)
+    def close(self):
+        """Clean up agent resources."""
+        logger.info("[%s] ChatAgent closing", self._request_id)
         self._chat_companion.clear_chat_data(self._request_id)

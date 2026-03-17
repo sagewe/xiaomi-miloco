@@ -5,19 +5,17 @@
 
 import asyncio
 import logging
-from typing import List, Optional
+from typing import Callable, List, Optional
 
 from miloco_server.schema.mcp_schema import MCPClientStatus, choose_mcp_list
 
 from miloco_server.utils.llm_utils.action_converter import ActionDescriptionConverter, ConverterResult
 from miloco_server.utils.llm_utils.device_chooser import DeviceChooser
 
-from miloco_server import actor_system
 from miloco_server.schema.chat_schema import Confirmation, Dialog, Event, InstructionPayload, Internal
 from miloco_server.schema.miot_schema import CameraInfo
 from miloco_server.schema.trigger_schema import Action, Notify, TriggerRule, TriggerRuleDetail, ExecuteInfo, ExecuteType, ExecuteInfoDetail
 from pydantic.dataclasses import dataclass
-from thespian.actors import Actor, ActorAddress, ActorExitRequest
 
 logger = logging.getLogger(__name__)
 
@@ -31,61 +29,55 @@ class RuleCreateMessage:
     notify: Optional[str]
 
 
-class RuleCreateTool(Actor):
-    """Actor for creating and managing automation rules."""
+class RuleCreateTool:
+    """Tool for creating and managing automation rules."""
+
     def __init__(
         self,
         request_id: str,
-        out_actor_address: ActorAddress,
+        send_instruction_fn: Callable,
         camera_ids: Optional[List[str]] = None,
         mcp_ids: Optional[List[str]] = None,
     ):
-        super().__init__()
-        from miloco_server.service.manager import get_manager # pylint: disable=import-outside-toplevel
+        from miloco_server.service.manager import get_manager  # pylint: disable=import-outside-toplevel
         self._manager = get_manager()
         self._request_id = request_id
         self._default_preset_action_manager = self._manager.default_preset_action_manager
-        self._out_actor_address = out_actor_address
-        self._future = None
+        self._send_instruction_fn = send_instruction_fn
+        self._future: Optional[asyncio.Future] = None
         self._camera_ids = camera_ids
         self._mcp_ids = mcp_ids
-        logger.info("[%s] RuleCreateTool actor initialized", self._request_id)
+        logger.info("[%s] RuleCreateTool initialized", self._request_id)
 
-    def receiveMessage(self, msg, sender):
-        """Main method for receiving messages"""
-        if isinstance(msg, RuleCreateMessage):
-            self._future = asyncio.Future()
-            self.send(sender, self._future)
-            self._handle_create_rule(msg)
-        elif isinstance(msg, Event):
-            self._handle_event(msg)
-        elif isinstance(msg, ActorExitRequest):
-            self._handle_exit_request()
-        else:
-            logger.warning("[%s] Unknown message format: %s", self._request_id, type(msg))
-
-    def _handle_create_rule(self, message: RuleCreateMessage):
-        """Handle rule creation message"""
+    async def run(self, message: RuleCreateMessage) -> dict:
+        """Run rule creation and wait for user confirmation."""
+        self._future = asyncio.Future()
         asyncio.create_task(
             self._run_create_rule(
                 message.name,
                 message.condition,
                 message.action_descriptions,
                 message.location,
-                message.notify))
+                message.notify,
+            )
+        )
+        try:
+            return await asyncio.wait_for(self._future, timeout=600)
+        except asyncio.TimeoutError:
+            return {"error": "RuleCreateTool: timed out waiting for user confirmation"}
 
-    def _handle_event(self, event: Event):
-        """Handle events"""
+    def _handle_confirmation_event(self, event: Event):
+        """Handle confirmation event from the user (registered as next_event_handler)."""
         try:
             if event.judge_type("Confirmation", "SaveRuleConfirmResult"):
                 save_rule_confirm_result = Confirmation.SaveRuleConfirmResult.model_validate_json(event.payload)
                 self._handle_save_rule_confirm_result(save_rule_confirm_result)
             else:
                 raise ValueError(f"Invalid event: {event.header.namespace}.{event.header.name}")
-
         except Exception as e:  # pylint: disable=broad-exception-caught
-            logger.error("[%s] Error occurred while handling event: %s", self._request_id, str(e))
-            self._future.set_result({"error": str(e)})
+            logger.error("[%s] Error occurred while handling confirmation event: %s", self._request_id, str(e))
+            if self._future and not self._future.done():
+                self._future.set_result({"error": str(e)})
 
     async def _run_create_rule(
             self,
@@ -93,8 +85,8 @@ class RuleCreateTool(Actor):
             condition: str,
             action_descriptions: list[str],
             location: Optional[str] = None,
-            notify: Optional[str] = None) -> str:
-        """Run agent to process user query"""
+            notify: Optional[str] = None) -> None:
+        """Run the rule creation flow."""
         logger.info(
             "[%s] Starting to process rule create: name: %s, condition: %s, action_description: %s, location: %s, notify: %s",  # pylint: disable=line-too-long
             self._request_id,
@@ -143,15 +135,16 @@ class RuleCreateTool(Actor):
                     list(ha_automation_actions.values()))
             )
 
-            dispatcher_message = Internal.Dispatcher(next_event_handler=self.myAddress)
+            # Register self as next event handler so confirmation comes back here
+            dispatcher_message = Internal.Dispatcher(next_event_handler=self._handle_confirmation_event)
             self._send_instruction(dispatcher_message)
             self._send_instruction(save_rule_confirm)
 
         except Exception as e:  # pylint: disable=broad-exception-caught
             logger.error("[%s] Error occurred during agent execution: %s", self._request_id, str(e), exc_info=True)
             self._send_instruction(Dialog.Exception(message=f"Error occurred during execution: {str(e)}"))
-            self._future.set_result({"error": str(e)})
-
+            if self._future and not self._future.done():
+                self._future.set_result({"error": str(e)})
 
     async def _choose_mcp_list(self) -> list[MCPClientStatus]:
         """Get MCP list"""
@@ -208,7 +201,6 @@ class RuleCreateTool(Actor):
 
         return no_matched_action_descriptions, matched_actions
 
-
     async def _choose_camera(self, location: Optional[str] = None) -> tuple[List[CameraInfo], List[CameraInfo]]:
         """Choose camera"""
         device_chooser = DeviceChooser(
@@ -224,20 +216,24 @@ class RuleCreateTool(Actor):
         if save_rule_confirm_result.confirmed and save_rule_confirm_result.rule is not None:
             asyncio.create_task(self._create_rule_and_respond(save_rule_confirm_result.rule))
         else:
-            self._future.set_result({"content": "User refused to save this rule"})
+            if self._future and not self._future.done():
+                self._future.set_result({"content": "User refused to save this rule"})
 
     async def _create_rule_and_respond(self, rule: TriggerRule):
         """Asynchronously create rule and respond with result"""
         try:
             rule_id = await self._manager.trigger_rule_service.create_trigger_rule(rule)
             if rule_id:
-                self._future.set_result(
-                    {"content": self._simplify_rule_introduction(rule)})
+                if self._future and not self._future.done():
+                    self._future.set_result(
+                        {"content": self._simplify_rule_introduction(rule)})
             else:
-                self._future.set_result({"error": "Failed to create trigger rule"})
+                if self._future and not self._future.done():
+                    self._future.set_result({"error": "Failed to create trigger rule"})
         except Exception as e:  # pylint: disable=broad-exception-caught
             logger.error("[%s] Error creating trigger rule: %s", self._request_id, str(e))
-            self._future.set_result({"error": str(e)})
+            if self._future and not self._future.done():
+                self._future.set_result({"error": str(e)})
 
     def _simplify_rule_introduction(self, rule: TriggerRule) -> str:
         """Simplify rule introduction"""
@@ -255,62 +251,4 @@ class RuleCreateTool(Actor):
         )
 
     def _send_instruction(self, instruction_payload: InstructionPayload):
-        actor_system.tell(self._out_actor_address, instruction_payload)
-
-    def _handle_exit_request(self):
-        """Handle Actor exit request"""
-        logger.info("[%s] RuleCreateTool handling exit request", self._request_id)
-
-    def _match_action_with_preset(
-            self,
-            generated_action: Action,
-            miot_scene_actions: dict[str, Action],
-            ha_automation_actions: dict[str, Action]) -> Action:
-        """
-        Map model-generated action to preset action
-
-        Args:
-            generated_action: Model-generated action
-            miot_scene_actions: MIoT scene actions
-            ha_automation_actions: Home Assistant automation actions
-
-        Returns:
-            Action: Mapped action, if can map to preset action then use preset description, otherwise mark as
-        """
-        try:
-            # Match MIoT scene actions
-            if (generated_action.mcp_client_id == "miot_manual_scenes" and
-                generated_action.mcp_tool_name == "trigger_manual_scene" and
-                generated_action.mcp_tool_input and
-                    generated_action.mcp_tool_input.get("scene_id")):
-
-                scene_id = generated_action.mcp_tool_input.get("scene_id")
-                preset_action = miot_scene_actions.get(scene_id)
-                if preset_action:
-                    logger.info(
-                        "[%s] Action mapped to miot scene preset: %s",
-                        self._request_id,
-                        preset_action.introduction)
-                    return preset_action
-
-            # Match Home Assistant automation actions
-            elif (generated_action.mcp_client_id == "ha_automations" and
-                  generated_action.mcp_tool_name == "trigger_automation" and
-                  generated_action.mcp_tool_input and
-                  generated_action.mcp_tool_input.get("automation_id")):
-
-                automation_id = generated_action.mcp_tool_input.get("automation_id")
-                preset_action = ha_automation_actions.get(automation_id)
-                if preset_action:
-                    logger.info("[%s] Action mapped to HA automation preset: %s",
-                                self._request_id, preset_action.introduction)
-                    return preset_action
-
-            # No preset action matched
-            logger.info("[%s] Action not mapped to preset: %s", self._request_id, generated_action.introduction)
-            return generated_action
-
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            logger.error("[%s] Error in action mapping: %s", self._request_id, str(e))
-            return generated_action
-
+        self._send_instruction_fn(instruction_payload)

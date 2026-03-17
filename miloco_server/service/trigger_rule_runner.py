@@ -13,9 +13,6 @@ import logging
 import uuid
 
 from miloco_server.schema.mcp_schema import CallToolResult
-from thespian.actors import ActorExitRequest
-
-from miloco_server import actor_system
 from miloco_server.config.normal_config import TRIGGER_RULE_RUNNER_CONFIG
 from miloco_server.config.prompt_config import UserLanguage
 from miloco_server.dao.trigger_rule_log_dao import TriggerRuleLogDAO
@@ -35,7 +32,7 @@ from miloco_server.utils.local_models import ModelPurpose
 from miloco_server.utils.prompt_helper import TriggerRuleConditionPromptBuilder
 from miloco_server.utils.trigger_filter import trigger_filter
 from miloco_server.service import trigger_rule_dynamic_executor_cache
-from miloco_server.service.trigger_rule_dynamic_executor import START, TriggerRuleDynamicExecutor
+from miloco_server.service.trigger_rule_dynamic_executor import TriggerRuleDynamicExecutor
 
 logger = logging.getLogger(name=__name__)
 
@@ -519,28 +516,23 @@ class TriggerRuleRunner:
                                            tuple[bool,
                                                  Optional[CameraImgSeq]]]]) -> None:
         """Execute dynamic action"""
+        trigger_rule_dynamic_executor = None
         try:
             logger.info("[%s] Executing dynamic action: %s", execute_id, rule.name)
-            trigger_rule_dynamic_executor = trigger_rule_dynamic_executor_cache.get(rule.id)
-            if trigger_rule_dynamic_executor:
+            if trigger_rule_dynamic_executor_cache.get(rule.id):
                 logger.error(
-                    "[%s] Dynamic executor already exists pass it, trigger_rule: %s",
+                    "[%s] Dynamic executor already exists, skipping: %s",
                     execute_id, rule.name)
                 return
 
-            trigger_rule_dynamic_executor = actor_system.createActor(
-                lambda: TriggerRuleDynamicExecutor(
-                    execute_id, rule, self.trigger_rule_log_dao, camera_motion_dict))
+            trigger_rule_dynamic_executor = TriggerRuleDynamicExecutor(
+                execute_id, rule, self.trigger_rule_log_dao, camera_motion_dict)
             trigger_rule_dynamic_executor_cache[rule.id] = trigger_rule_dynamic_executor
-            future = actor_system.ask(trigger_rule_dynamic_executor, START, timeout=5)
-            result = await asyncio.wait_for(future, timeout=300)
-            logger.info("[%s] Dynamic executor executed, result: %s", execute_id, result)
-        except asyncio.TimeoutError as exc:
-            logger.error("[%s] Dynamic executor timeout: %s", execute_id, exc)
+            result = await trigger_rule_dynamic_executor.run()
+            logger.info("[%s] Dynamic executor finished, result: %s", execute_id, result)
         except Exception as e:  # pylint: disable=broad-except
             logger.error("[%s] Dynamic executor error: %s", execute_id, e)
         finally:
-            actor_system.tell(trigger_rule_dynamic_executor, ActorExitRequest())
             trigger_rule_dynamic_executor_cache.pop(rule.id, None)
 
     async def execute_action(self, action: Action) -> bool:

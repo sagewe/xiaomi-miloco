@@ -11,12 +11,10 @@ import logging
 from typing import Dict, Any, Optional, Annotated
 from fastmcp import FastMCP
 from fastmcp.tools import Tool
-from miloco_server import actor_system
 from miloco_server.schema.mcp_schema import LocalMcpClientId
 from miloco_server.utils.chat_companion import ChatCachedData
 from miloco_server.tools.rule_create_tool import RuleCreateMessage, RuleCreateTool
-from miloco_server.tools.vision_chat_tool import VisionChatTool, VisionUnderstandStart
-from thespian.actors import ActorExitRequest
+from miloco_server.tools.vision_chat_tool import VisionChatTool
 
 logger = logging.getLogger(__name__)
 
@@ -107,30 +105,18 @@ class LocalDefaultMcp(LocalMCPBase):
         if chat_data is None:
             return "error: request_id not found"
 
-        if chat_data.out_actor_address is None:
-            return "error: transver_actor_address not found"
+        if chat_data.send_instruction is None:
+            return "error: send_instruction not found"
 
-        rule_create_tool = actor_system.createActor(
-            lambda: RuleCreateTool(
-                request_id=request_id,
-                out_actor_address=chat_data.out_actor_address,
-                camera_ids=chat_data.camera_ids,
-                mcp_ids=chat_data.mcp_ids,
-            ))
+        rule_create_tool = RuleCreateTool(
+            request_id=request_id,
+            send_instruction_fn=chat_data.send_instruction,
+            camera_ids=chat_data.camera_ids,
+            mcp_ids=chat_data.mcp_ids,
+        )
 
         logger.info("RuleTool: create rule: %s, %s, %s, %s, %s", name, condition, actions, location, notify)
-        future: asyncio.Future = actor_system.ask(
-            rule_create_tool, RuleCreateMessage(
-                name, condition, actions, location, notify), timeout=5)
-        timeout = 600
-        try:
-            response = await asyncio.wait_for(future, timeout=timeout)
-        except asyncio.TimeoutError as exc:
-            logger.error("RuleTool: create rule timeout after %d seconds, error: %s", timeout, str(exc), exc_info=True)
-            return {"error": f"RuleTool: create rule timeout after {timeout} seconds, error: {str(exc)}"}
-
-
-        actor_system.tell(rule_create_tool, ActorExitRequest())
+        response = await rule_create_tool.run(RuleCreateMessage(name, condition, actions, location, notify))
         logger.info("RuleTool: create rule response: %s", response)
         return response
 
@@ -145,31 +131,19 @@ class LocalDefaultMcp(LocalMCPBase):
         if chat_data is None:
             return "error: request_id not found"
 
-        if chat_data.out_actor_address is None:
-            return "error: transver_actor_address not found"
+        if chat_data.send_instruction is None:
+            return "error: send_instruction not found"
 
-        camera_ids = chat_data.camera_ids
-
-        vision_chat_tool = actor_system.createActor(lambda: VisionChatTool(
+        vision_chat_tool = VisionChatTool(
             request_id=request_id,
             query=query,
-            out_actor_address=chat_data.out_actor_address,
+            send_instruction_fn=chat_data.send_instruction,
             location_info=location,
-            user_choosed_camera_dids=camera_ids,
+            user_choosed_camera_dids=chat_data.camera_ids,
             camera_images=chat_data.camera_images,
-        ))
+        )
 
-        future: asyncio.Future = actor_system.ask(vision_chat_tool,
-                                                  VisionUnderstandStart(),
-                                                  timeout=5)
-        timeout = 600
-        try:
-            response = await asyncio.wait_for(future, timeout=timeout)
-        except asyncio.TimeoutError as exc:
-            logger.error("VisionUnderstandTool: vision understand timeout after %d seconds, error: %s", timeout, str(exc), exc_info=True)
-            return {"error": f"VisionUnderstandTool: vision understand timeout after {timeout} seconds, error: {str(exc)}"}
-
-        actor_system.tell(vision_chat_tool, ActorExitRequest())
+        response = await vision_chat_tool.run()
         logger.info("VisionUnderstandTool: vision understand response: %s", response)
         return response
 

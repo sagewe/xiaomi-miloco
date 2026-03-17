@@ -5,17 +5,16 @@
 
 import asyncio
 import logging
-from typing import Optional
+from typing import Callable, Optional
 
 from pydantic.dataclasses import dataclass
 from miloco_server.schema.miot_schema import CameraImgSeq
-from thespian.actors import Actor, ActorAddress, ActorExitRequest
 
-from miloco_server import actor_system
 from miloco_server.config import CHAT_CONFIG
 from miloco_server.schema.chat_schema import Dialog, InstructionPayload, Template
 from miloco_server.utils.llm_utils.device_chooser import DeviceChooser
 from miloco_server.utils.llm_utils.vision_understander import VisionUnderstander
+
 logger = logging.getLogger(__name__)
 
 
@@ -24,57 +23,42 @@ class VisionUnderstandStart:
     pass
 
 
-class VisionChatTool(Actor):
-    """Actor for handling vision chat and image understanding tasks."""
+class VisionChatTool:
+    """Tool for handling vision chat and image understanding tasks."""
 
     def __init__(
         self,
         request_id: str,
         query: str,
-        out_actor_address: ActorAddress,
+        send_instruction_fn: Callable,
         location_info: Optional[str],
         user_choosed_camera_dids: list[str],
         camera_images: Optional[list[CameraImgSeq]],
     ):
-        """Initialize ReAct agent Actor"""
-        super().__init__()
-        from miloco_server.service.manager import get_manager # pylint: disable=import-outside-toplevel
+        from miloco_server.service.manager import get_manager  # pylint: disable=import-outside-toplevel
         self._manager = get_manager()
 
         self._request_id = request_id
         self._query = query
         self._location_info = location_info
         self._user_choosed_camera_dids = user_choosed_camera_dids
-        self._out_actor_address = out_actor_address
-        self._future = None
+        self._send_instruction_fn = send_instruction_fn
         self._language = self._manager.auth_service.get_user_language().language
         self._vision_use_img_count = CHAT_CONFIG["vision_use_img_count"]
         self._camera_images: Optional[list[CameraImgSeq]] = camera_images
         logger.info("[%s] VisionChatTool initialized", self._request_id)
 
-    def receiveMessage(self, msg, sender):
-        """
-        Actor message receiving method, handles received messages
-        """
+    async def run(self) -> dict:
+        """Run vision understanding and return the result."""
+        future: asyncio.Future = asyncio.get_event_loop().create_future()
+        asyncio.create_task(self._handle_vision_understand_start(future))
         try:
-            if isinstance(msg, VisionUnderstandStart):
-                self._future = asyncio.Future()
-                self.send(sender, self._future)
-                asyncio.create_task(self._handle_vision_understand_start())
-            elif isinstance(msg, ActorExitRequest):
-                logger.info(
-                    "[%s] ChatAgent ActorExitRequest received", self._request_id
-                )
-            else:
-                logger.warning(
-                    "[%s] Unsupported message: %s", self._request_id, msg)
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            logger.error(
-                "[%s] Error in receiveMessage method: %s", self._request_id, e)
+            return await asyncio.wait_for(future, timeout=600)
+        except asyncio.TimeoutError:
+            return {"error": "VisionChatTool: timed out waiting for vision understanding"}
 
-    async def _handle_vision_understand_start(self) -> None:
-        """Run agent to process user query"""
-
+    async def _handle_vision_understand_start(self, future: asyncio.Future) -> None:
+        """Run vision understanding logic."""
         logger.info(
             "[%s] Starting to process user query: %s", self._request_id, self._query
         )
@@ -108,7 +92,7 @@ class VisionChatTool(Actor):
                 ]
 
             if len(camera_img_seqs) == 0:
-                self._future.set_result({"error": "No camera images found, please check cameras are working"})
+                future.set_result({"error": "No camera images found, please check cameras are working"})
                 return
 
             camera_img_path_seqs = await asyncio.gather(*[
@@ -127,11 +111,9 @@ class VisionChatTool(Actor):
 
             content = await vision_understander.run()
             if content is not None:
-                self._future.set_result({"content": content})
-                return
+                future.set_result({"content": content})
             else:
-                self._future.set_result({"error": "Failed to understand vision"})
-                return
+                future.set_result({"error": "Failed to understand vision"})
 
         except Exception as e:  # pylint: disable=broad-exception-caught
             logger.error(
@@ -139,11 +121,8 @@ class VisionChatTool(Actor):
                 exc_info=True)
             self._send_instruction(
                 Dialog.Exception(message=f"Failed to understand vision: {str(e)}"))
-            self._future.set_result({"error": f"Failed to understand vision: {str(e)}"})
-            return
-
+            future.set_result({"error": f"Failed to understand vision: {str(e)}"})
 
     def _send_instruction(self, instruction_payload: InstructionPayload):
-        """Send instruction to transceiver actor"""
-        actor_system.tell(self._out_actor_address, instruction_payload)
-
+        """Send instruction upstream."""
+        self._send_instruction_fn(instruction_payload)

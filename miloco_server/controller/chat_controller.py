@@ -12,9 +12,7 @@ import logging
 from typing import Optional
 from fastapi import APIRouter, Depends, WebSocket
 from fastapi.websockets import WebSocketDisconnect
-from thespian.actors import ActorExitRequest
 
-from miloco_server import actor_system
 from miloco_server.service.chat_agent_dispatcher import ChatAgentDispatcher
 from miloco_server.schema.chat_schema import Event
 from miloco_server.schema.common_schema import NormalResponse
@@ -36,18 +34,16 @@ async def ws_query(
     """Chat WebSocket."""
     logger.info("[%s] WebSocket connection request", request_id)
 
-    agent_transceiver = actor_system.createActor(
-        lambda: ChatAgentDispatcher(websocket, request_id, session_id))
+    dispatcher = ChatAgentDispatcher(websocket, request_id, session_id)
     try:
         await websocket.accept()
         while True:
-
             message = await websocket.receive_text()
             logger.info(
                 "[%s] Received message from client, %s", request_id, message)
             event_data = json.loads(message)
             event = Event(**event_data)
-            actor_system.tell(agent_transceiver, event)
+            dispatcher.handle_event(event)
             await asyncio.sleep(0.1)
 
     except WebSocketDisconnect:
@@ -57,9 +53,8 @@ async def ws_query(
         await websocket.close(code=1011, reason=f"Server error: {str(err)}")
     finally:
         logger.info("[%s] WebSocket connection closed", request_id)
-        actor_system.tell(agent_transceiver, ActorExitRequest())
-        logger.info(
-            "[%s] ActorExitRequest sent to ChatAgentDispatcher", request_id)
+        await dispatcher.close()
+        logger.info("[%s] Dispatcher closed", request_id)
 
 @router.get("/history/{session_id}", summary="Get chat history details", response_model=NormalResponse)
 async def get_chat_history(session_id: str,

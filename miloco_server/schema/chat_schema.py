@@ -7,11 +7,10 @@ Define chat-related data structures including events and instructions
 """
 
 import time
-from typing import List, Optional
+from typing import Any, List, Optional
 from miloco_server.schema.miot_schema import CameraImgPathSeq, CameraInfo
 from miloco_server.schema.trigger_schema import Action, TriggerRule, TriggerRuleDetail
 from pydantic import BaseModel, Field, ConfigDict
-from thespian.actors import ActorAddress
 
 class Header(BaseModel):
     """Header model for events and instructions"""
@@ -167,6 +166,6 @@ class Internal:
     """Internal event related classes"""
     class Dispatcher(InstructionPayload):
         model_config = ConfigDict(arbitrary_types_allowed=True)
-        next_event_handler: Optional[ActorAddress] = Field(None, description="Next event handler")
+        next_event_handler: Optional[Any] = Field(None, description="Next event handler callable")
         current_query: Optional[str] = Field(None, description="Current query")
         need_storage_history: Optional[bool] = Field(None, description="Whether to storage history")

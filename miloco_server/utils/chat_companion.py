@@ -8,14 +8,13 @@ Provides functionality to store, retrieve and manage chat session data.
 
 import logging
 from dataclasses import dataclass
-from typing import Optional
+from typing import Callable, Optional
 
 from cachetools import TTLCache
 
 from miloco_server.dao.chat_history_dao import ChatHistoryDAO
 from miloco_server.schema.chat_history_schema import ChatHistoryStorage
 from miloco_server.schema.miot_schema import CameraImgSeq
-from thespian.actors import ActorAddress
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +22,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ChatCachedData:
     """Chat cached data structure"""
-    out_actor_address: Optional[ActorAddress] = None
+    send_instruction: Optional[Callable] = None
     camera_ids: Optional[list[str]] = None
     mcp_ids: Optional[list[str]] = None
     other_mcp_tools_meta: Optional[list] = None

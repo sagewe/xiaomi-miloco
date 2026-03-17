@@ -4,8 +4,3 @@
 """
 Miloco Service 核心包
 """
-from thespian.actors import ActorSystem
-
-actor_system = ActorSystem()
-
-__all__ = ['actor_system']
