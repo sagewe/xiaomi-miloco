@@ -15,7 +15,7 @@ GitHub tracking epic: [#2](https://github.com/sagewe/xiaomi-miloco/issues/2)
 
 ## Current implementation status
 
-- Implemented locally:
+- Implemented and merged:
   - [#3](https://github.com/sagewe/xiaomi-miloco/issues/3) migration issue template and PR contract
   - [#4](https://github.com/sagewe/xiaomi-miloco/issues/4) native crate scaffold under `native/miloco-agent-runtime/`
   - [#5](https://github.com/sagewe/xiaomi-miloco/issues/5) wheel build workflow for Linux `x86_64` and `aarch64`
@@ -29,10 +29,23 @@ GitHub tracking epic: [#2](https://github.com/sagewe/xiaomi-miloco/issues/2)
   - [#13](https://github.com/sagewe/xiaomi-miloco/issues/13) dynamic execute integration
   - [#14](https://github.com/sagewe/xiaomi-miloco/issues/14) parity/failure coverage and replay benchmark
   - [#15](https://github.com/sagewe/xiaomi-miloco/issues/15) Docker default switch to `auto`
-- Still pending before merge:
-  - Push branch and open PRs that map the staged changes back to the issue slices
-  - Run GitHub Actions for wheel build and release upload against a real tag/release
-  - Close issues only after the corresponding PRs merge
+- Verified in GitHub Actions:
+  - `agent-runtime-ci.yml` runs successfully on `main`
+  - `build-agent-runtime-wheels.yml` builds `cp312` wheels for Linux `x86_64` and `aarch64`
+  - workflow artifacts include both wheel files:
+    - `miloco_agent_runtime-0.1.0-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl`
+    - `miloco_agent_runtime-0.1.0-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl`
+- Remaining rollout step:
+  - Validate asset upload against a draft or published GitHub Release tag
+
+## Manual release-upload validation
+
+Use the `Build Agent Runtime Wheels` workflow in `workflow_dispatch` mode with:
+
+- `upload_to_release = true`
+- `release_tag = <existing draft release tag>`
+
+This keeps the normal `release.published` path unchanged while allowing wheel asset upload to be tested against a prepared draft release before a real publish.
 
 ## Issue template checklist
 
