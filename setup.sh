@@ -1,6 +1,6 @@
 #!/bin/bash
-# Miloco Mac Setup Script
-# Sets up and runs miloco_server on macOS using external LLM API (no AI Engine needed)
+# Miloco Setup Script
+# Sets up and runs miloco_server using external LLM API (no AI Engine needed)
 
 set -e
 
@@ -27,7 +27,7 @@ info "uv $(uv --version) ✓"
 # ── Node.js check ─────────────────────────────────────────────────────────────
 info "Checking Node.js..."
 if ! command -v node &>/dev/null; then
-    error "Node.js not found. Install via: brew install node"
+    error "Node.js not found. Install via: https://nodejs.org or your system package manager"
 fi
 NODE_VERSION=$(node -v | sed 's/v//' | cut -d. -f1)
 if [ "$NODE_VERSION" -lt 20 ]; then
