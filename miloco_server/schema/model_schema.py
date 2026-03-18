@@ -37,9 +37,6 @@ class ThirdPartyModelCreate(ThirdPartyModelVendor):
 
 
 class LLMModelInfo(ThirdPartyModelInfo):
-    local: bool = Field(default=False, description="Whether it is a local model")
-    loaded: bool = Field(default=False, description="Whether it is loaded")
-    estimate_vram_usage: float = Field(default=-1.0, description="Estimated VRAM usage (GB)")
 
     @classmethod
     def from_third_party(cls, third_party_model_info: ThirdPartyModelInfo) -> "LLMModelInfo":
@@ -48,9 +45,6 @@ class LLMModelInfo(ThirdPartyModelInfo):
             model_name=third_party_model_info.model_name,
             base_url=third_party_model_info.base_url,
             api_key=third_party_model_info.api_key,
-            local=False,
-            loaded=True,
-            estimate_vram_usage=-1.0
         )
 
 class ModelsList(BaseModel):

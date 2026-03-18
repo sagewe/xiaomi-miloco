@@ -4,9 +4,8 @@
  */
 
 import React from 'react';
-import { Button, Typography, Divider, Empty } from 'antd';
+import { Button, Typography, Empty } from 'antd';
 import { useTranslation } from 'react-i18next';
-import { PlusOutlined } from '@ant-design/icons';
 import { Card, Icon } from '@/components';
 import { ModelItem } from './index';
 import styles from '../index.module.less';
@@ -25,8 +24,6 @@ const ModelServiceCard = ({
   onEditModel,
   onDeleteModel,
   // onRefreshModels
-  onSetModelLoaded,
-  modelLoadingStates,
 }) => {
   const { t } = useTranslation();
   return (
@@ -34,36 +31,9 @@ const ModelServiceCard = ({
       className={styles.modelServiceCard}
     >
       <div className={styles.modelList}>
-        <Card
-          className={styles.modelCategory} contentClassName={styles.modelCategoryContent}>
-          <div className={styles.modelCategoryTitle}>
-            <Title style={{ marginBottom: 0 }} level={5}>{t('modelModal.localModels')}</Title>
-          </div>
-          <div className={styles.contentWrap}>
-            {(() => {
-              const localModels = models.filter(model => model.local === true);
-              return localModels.length > 0 ? (
-                localModels.map(model => (
-                  <ModelItem
-                    key={model.id}
-                    model={model}
-                    canEdit={false}
-                    canDelete={false}
-                    onSetModelLoaded={onSetModelLoaded}
-                    modelLoadingStates={modelLoadingStates}
-                  />
-                ))
-              ) : (
-                <Empty description={t('modelModal.noLocalModels')} />
-              );
-            })()}
-          </div>
-
-        </Card>
-
         <Card className={styles.modelCategory} contentClassName={styles.modelCategoryContent}>
           <div className={styles.modelCategoryTitle}>
-            <Title style={{ marginBottom: 0 }} level={5}>{t('modelModal.cloudModels')}</Title>
+            <Title style={{ marginBottom: 0 }} level={5}>{t('modelModal.models')}</Title>
             <Button
               type="primary"
               icon={<Icon name="add" size={14} style={{ color: 'white' }} />}
@@ -73,26 +43,20 @@ const ModelServiceCard = ({
             </Button>
           </div>
           <div className={styles.contentWrap}>
-
-
-            {(() => {
-              const cloudModels = models.filter(model => model.local === false);
-              return cloudModels.length > 0 ? (
-                cloudModels.map(model => (
-                  <ModelItem
-                    key={model.id}
-                    model={model}
-                    onEdit={onEditModel}
-                    onDelete={onDeleteModel}
+            {models.length > 0 ? (
+              models.map(model => (
+                <ModelItem
+                  key={model.id}
+                  model={model}
+                  onEdit={onEditModel}
+                  onDelete={onDeleteModel}
                   // onRefresh={onRefreshModels}
-                  />
-                ))
-              ) : (
-                <Empty description={t('modelModal.noCloudModels')} />
-              );
-            })()}
+                />
+              ))
+            ) : (
+              <Empty description={t('modelModal.noModels')} />
+            )}
           </div>
-
         </Card>
       </div>
     </div>
