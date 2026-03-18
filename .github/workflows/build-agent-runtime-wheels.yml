@@ -21,8 +21,10 @@ jobs:
         include:
           - target: x86_64-unknown-linux-gnu
             artifact_name: agent-runtime-wheel-x86_64
+            cflags_aarch64: ""
           - target: aarch64-unknown-linux-gnu
             artifact_name: agent-runtime-wheel-aarch64
+            cflags_aarch64: "-D__ARM_ARCH=8"
 
     steps:
       - name: Checkout
@@ -35,6 +37,8 @@ jobs:
 
       - name: Build wheel
         uses: PyO3/maturin-action@v1
+        env:
+          CFLAGS_aarch64_unknown_linux_gnu: ${{ matrix.cflags_aarch64 }}
         with:
           target: ${{ matrix.target }}
           manylinux: "2014"
