@@ -10,6 +10,7 @@ import logging
 import threading
 import time
 import webbrowser
+from contextlib import asynccontextmanager
 
 import uvicorn
 from fastapi import FastAPI, Request, Response
@@ -35,10 +36,33 @@ from miloco_server.utils.normal_util import get_uvicorn_log_config, update_local
 
 logger = logging.getLogger(__name__)
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan handler for startup and shutdown events"""
+    logger.info("Initializing application...")
+    try:
+        init_database()
+        logger.info("Database initialization completed")
+    except Exception as e:
+        logger.error("Database initialization failed: %s", e)
+        raise
+    logger.info("Application initialization completed")
+    try:
+        await get_manager().initialize(callback=open_browser_async)
+        logger.info("Manager initialization completed")
+    except Exception as e:
+        logger.error("Manager initialization failed: %s", e)
+        raise
+    yield
+    logger.info("Application is shutting down...")
+    logger.info("Application has been shut down")
+
+
 app = FastAPI(
     title=APP_CONFIG["title"],
     description=APP_CONFIG["description"],
-    version=APP_CONFIG["version"]
+    version=APP_CONFIG["version"],
+    lifespan=lifespan
 )
 
 
@@ -77,34 +101,6 @@ async def spa_handler(full_path: str):
     else:
         return Response(status_code=404, content="404 Not Found")
 
-
-@app.on_event("startup")
-async def startup_event():
-    """Application initialization operations on startup"""
-    logger.info("Initializing application...")
-
-    try:
-        init_database()
-        logger.info("Database initialization completed")
-    except Exception as e:
-        logger.error("Database initialization failed: %s", e)
-        raise
-
-    logger.info("Application initialization completed")
-
-    try:
-        await get_manager().initialize(callback=open_browser_async)
-        logger.info("Manager initialization completed")
-    except Exception as e:
-        logger.error("Manager initialization failed: %s", e)
-        raise
-
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Cleanup operations when application shuts down"""
-    logger.info("Application is shutting down...")
-    logger.info("Application has been shut down")
 
 
 def _open_browser():

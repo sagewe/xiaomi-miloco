@@ -10,16 +10,40 @@ import { theme } from 'antd';
 export const darkTheme = {
   algorithm: theme.darkAlgorithm,
   token: {
-    // primary color
-    colorPrimary: 'rgba(255, 255, 255, 1)',
-    colorPrimaryHover: 'rgba(255, 255, 255, 0.14)',
-    colorPrimaryActive: 'rgba(255, 255, 255, 0.14)',
+    // primary color — Claude orange
+    colorPrimary: '#cba6f7',        // Mauve
+    colorPrimaryHover: '#d6baff',
+    colorPrimaryActive: '#b894e8',
+
+    // functional colors
+    colorSuccess: '#a6e3a1',        // Green
+    colorWarning: '#f9e2af',        // Yellow
+    colorError: '#f38ba8',          // Red
+    colorInfo: '#89b4fa',           // Blue
+
+    // background
+    colorBgContainer: '#313244',    // Surface0
+    colorBgElevated: '#45475a',     // Surface1
+    colorBgLayout: '#1e1e2e',       // Base
+    colorBgSpotlight: 'rgba(205, 214, 244, 0.9)',
+    colorBgMask: 'rgba(17, 17, 27, 0.7)',
+
+    // text
+    colorText: '#cdd6f4',           // Text
+    colorTextSecondary: '#bac2de',  // Subtext1
+    colorTextTertiary: '#a6adc8',   // Subtext0
+    colorTextQuaternary: '#9399b2', // Overlay2
+    colorTextDisabled: '#7f849c',   // Overlay1
+
+    // border
+    colorBorder: '#585b70',         // Surface2
+    colorBorderSecondary: '#45475a', // Surface1
 
     // border radius
-    borderRadius: 6,
-    borderRadiusLG: 8,
-    borderRadiusSM: 4,
-    borderRadiusXS: 2,
+    borderRadius: 8,
+    borderRadiusLG: 12,
+    borderRadiusSM: 6,
+    borderRadiusXS: 4,
 
     // shadows
     boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)',
@@ -73,28 +97,23 @@ export const darkTheme = {
     motionEaseIn: 'cubic-bezier(0.55, 0.055, 0.675, 0.19)',
   },
   components: {
-    // Menu component config
     Menu: {
-      borderRadius: 6,
-      itemBorderRadius: 4,
-      itemSelectedBg: 'rgba(255, 255, 255, 0.14)',
-      itemActiveBg: 'rgba(255, 255, 255, 0.14)',
-      itemHoverBg: 'rgba(255, 255, 255, 0.14)',
-      itemHoverColor: 'rgba(255, 255, 255, 1)',
-      itemSelectedColor: 'rgba(255, 255, 255, 1)',
+      borderRadius: 8,
+      itemBorderRadius: 6,
+      itemSelectedBg: 'rgba(203, 166, 247, 0.2)',
+      itemActiveBg: 'rgba(203, 166, 247, 0.15)',
+      itemHoverBg: 'rgba(88, 91, 112, 0.4)',
+      itemHoverColor: '#cdd6f4',
+      itemSelectedColor: '#cba6f7',
       algorithm: true,
       borderWidth: 0,
       inlineIndent: 0,
-      // itemPaddingInline: 16,
     },
-    // Drawer component config
     Drawer: {
       algorithm: true,
-
     },
-    // Button component config
     Button: {
-      borderRadius: 6,
+      borderRadius: 8,
       controlHeight: 32,
       controlHeightLG: 40,
       controlHeightSM: 24,
@@ -104,10 +123,8 @@ export const darkTheme = {
       algorithm: true,
       defaultShadow: 'none',
     },
-
-    // Input component config
     Input: {
-      borderRadius: 6,
+      borderRadius: 8,
       controlHeight: 32,
       controlHeightLG: 40,
       controlHeightSM: 24,
@@ -116,74 +133,48 @@ export const darkTheme = {
       paddingInlineSM: 8,
       algorithm: true,
       borderWidth: 1,
-      activeShadow: '0 0 0 1px rgba(0, 0, 0, 1)',
+      activeShadow: '0 0 0 2px rgba(203, 166, 247, 0.3)',
     },
-
-    // Select component config
     Select: {
-      borderRadius: 6,
+      borderRadius: 8,
       controlHeight: 32,
       controlHeightLG: 40,
       controlHeightSM: 24,
       algorithm: true,
-      optionSelectedBg: 'rgba(0, 189, 195, 0.1)',
+      optionSelectedBg: 'rgba(203, 166, 247, 0.2)',
     },
-
-
-
-    // Card component config
     Card: {
-      borderRadius: 8,
+      borderRadius: 12,
       algorithm: true,
     },
-
-    // Modal component config
     Modal: {
+      borderRadius: 12,
+      algorithm: true,
+    },
+    Table: {
       borderRadius: 8,
       algorithm: true,
     },
-
-
-
-    // Table component config
-    Table: {
+    Tag: {
       borderRadius: 6,
       algorithm: true,
     },
-
-    // Tag component config
-    Tag: {
-      borderRadius: 4,
-      algorithm: true,
-    },
-
-    // Badge component config
     Badge: {
       algorithm: true,
     },
-
-    // Progress component config
     Progress: {
       algorithm: true,
     },
-
-    // Slider component config
     Slider: {
       algorithm: true,
     },
-
-    // Switch component config
     Switch: {
       algorithm: true,
     },
-
-    // Checkbox component config
     Checkbox: {
-      borderRadius: 2,
+      borderRadius: 4,
       algorithm: true,
     },
-
-    // Radio component config
     Radio: {
       algorithm: true,
     },
@@ -194,49 +185,49 @@ export const darkTheme = {
 export const globalTheme = {
   algorithm: theme.defaultAlgorithm,
   token: {
-    // primary color
-    colorPrimary: 'rgba(0, 0, 0, 1)',
-    colorPrimaryHover: 'rgba(0, 0, 0, 1)',
-    colorPrimaryActive: 'rgba(0, 0, 0, 1)',
-    colorPrimaryBg: 'rgba(0, 189, 195, 0.1)',
-    colorPrimaryBgHover: 'rgba(0, 189, 195, 0.05)',
-    colorPrimaryBorder: 'rgba(0, 189, 195, 1)',
-    colorPrimaryBorderHover: 'rgba(0, 169, 175, 1)',
+    // primary color — Claude orange
+    colorPrimary: '#8839ef',        // Latte Mauve
+    colorPrimaryHover: '#9040ff',
+    colorPrimaryActive: '#7a31d6',
+    colorPrimaryBg: 'rgba(136, 57, 239, 0.08)',
+    colorPrimaryBgHover: 'rgba(136, 57, 239, 0.12)',
+    colorPrimaryBorder: '#8839ef',
+    colorPrimaryBorderHover: '#7a31d6',
 
     // functional colors
-    colorSuccess: '#52c41a',
-    colorWarning: '#faad14',
-    colorError: '#ff4d4f',
-    colorInfo: 'rgba(0, 189, 195, 1)',
+    colorSuccess: '#40a02b',        // Latte Green
+    colorWarning: '#df8e1d',        // Latte Yellow
+    colorError: '#d20f39',          // Latte Red
+    colorInfo: '#1e66f5',           // Latte Blue
 
     // neutral colors
-    colorText: 'rgba(0, 0, 0, 0.85)',
-    colorTextSecondary: 'rgba(0, 0, 0, 0.45)',
-    colorTextTertiary: 'rgba(0, 0, 0, 0.25)',
-    colorTextQuaternary: 'rgba(0, 0, 0, 0.15)',
-    colorTextDisabled: 'rgba(0, 0, 0, 0.25)',
+    colorText: '#4c4f69',           // Latte Text
+    colorTextSecondary: '#5c5f77',  // Latte Subtext1
+    colorTextTertiary: '#6c6f85',   // Latte Subtext0
+    colorTextQuaternary: '#7c7f93', // Latte Overlay2
+    colorTextDisabled: '#8c8fa1',   // Latte Overlay1
 
     // background colors
     colorBgContainer: '#ffffff',
     colorBgElevated: '#ffffff',
-    colorBgLayout: '#f5f5f5',
-    colorBgSpotlight: 'rgba(0, 0, 0, 0.85)',
-    colorBgMask: 'rgba(0, 0, 0, 0.45)',
+    colorBgLayout: '#eff1f5',       // Latte Base
+    colorBgSpotlight: 'rgba(76, 79, 105, 0.85)',
+    colorBgMask: 'rgba(0, 0, 0, 0.4)',
 
     // border colors
-    colorBorder: '#d9d9d9',
-    colorBorderSecondary: '#f0f0f0',
+    colorBorder: '#ccd0da',         // Latte Surface0
+    colorBorderSecondary: '#e6e9ef', // Latte Mantle
 
     // border radius
-    borderRadius: 6,
-    borderRadiusLG: 8,
-    borderRadiusSM: 4,
-    borderRadiusXS: 2,
+    borderRadius: 8,
+    borderRadiusLG: 12,
+    borderRadiusSM: 6,
+    borderRadiusXS: 4,
 
     // shadows
-    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
-    boxShadowSecondary: '0 1px 4px rgba(0, 0, 0, 0.1)',
-    boxShadowTertiary: '0 4px 16px rgba(0, 0, 0, 0.2)',
+    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+    boxShadowSecondary: '0 1px 4px rgba(0, 0, 0, 0.06)',
+    boxShadowTertiary: '0 4px 16px rgba(0, 0, 0, 0.12)',
 
     // font family
     fontFamily: "'MiSans', system-ui, Avenir, Helvetica, Arial, sans-serif",
@@ -285,9 +276,8 @@ export const globalTheme = {
     motionEaseIn: 'cubic-bezier(0.55, 0.055, 0.675, 0.19)',
   },
   components: {
-    // Button component config
     Button: {
-      borderRadius: 6,
+      borderRadius: 8,
       controlHeight: 32,
       controlHeightLG: 40,
       controlHeightSM: 24,
@@ -297,10 +287,8 @@ export const globalTheme = {
       algorithm: true,
       defaultShadow: 'none',
     },
-
-    // Input component config
     Input: {
-      borderRadius: 6,
+      borderRadius: 8,
       controlHeight: 32,
       controlHeightLG: 40,
       controlHeightSM: 24,
@@ -309,28 +297,24 @@ export const globalTheme = {
       paddingInlineSM: 8,
       algorithm: true,
       borderWidth: 1,
-      activeShadow: '0 0 0 1px rgba(0, 0, 0, 1)',
+      activeShadow: '0 0 0 2px rgba(136, 57, 239, 0.2)',
     },
-
-    // Select component config
     Select: {
-      borderRadius: 6,
+      borderRadius: 8,
       controlHeight: 32,
       controlHeightLG: 40,
       controlHeightSM: 24,
       algorithm: true,
-      optionSelectedBg: 'rgba(247, 247, 247, 1)',
+      optionSelectedBg: 'rgba(136, 57, 239, 0.08)',
     },
-
-    // Menu component config
     Menu: {
-      borderRadius: 6,
-      itemBorderRadius: 4,
-      itemSelectedBg: 'rgba(235, 235, 235, 1)',
-      itemActiveBg: 'rgba(235, 235, 235, 1)',
-      itemHoverBg: 'rgba(235, 235, 235, 1)',
-      itemHoverColor: 'rgba(0, 0, 0, 1)',
-      itemSelectedColor: 'rgba(0, 0, 0, 1)',
+      borderRadius: 8,
+      itemBorderRadius: 6,
+      itemSelectedBg: 'rgba(136, 57, 239, 0.1)',
+      itemActiveBg: 'rgba(136, 57, 239, 0.1)',
+      itemHoverBg: 'rgba(76, 79, 105, 0.06)',
+      itemHoverColor: '#4c4f69',
+      itemSelectedColor: '#8839ef',
       algorithm: true,
       borderWidth: 0,
       inlineIndent: 0,
@@ -339,65 +323,42 @@ export const globalTheme = {
       collapsedWidth: 100,
       itemHeight: 48,
       horizontalLineHeight: '70px',
-
     },
-
-    // Card component config
     Card: {
-      borderRadius: 8,
+      borderRadius: 12,
       algorithm: true,
     },
-
-    // Modal component config
     Modal: {
-      borderRadius: 8,
+      borderRadius: 12,
       algorithm: true,
     },
-
-    // Drawer component config
     Drawer: {
       algorithm: true,
     },
-
-    // Table component config
     Table: {
+      borderRadius: 8,
+      algorithm: true,
+    },
+    Tag: {
       borderRadius: 6,
       algorithm: true,
     },
-
-    // Tag component config
-    Tag: {
-      borderRadius: 4,
-      algorithm: true,
-    },
-
-    // Badge component config
     Badge: {
       algorithm: true,
     },
-
-    // Progress component config
     Progress: {
       algorithm: true,
     },
-
-    // Slider component config
     Slider: {
       algorithm: true,
     },
-
-    // Switch component config
     Switch: {
       algorithm: true,
     },
-
-    // Checkbox component config
     Checkbox: {
-      borderRadius: 2,
+      borderRadius: 4,
       algorithm: true,
     },
-
-    // Radio component config
     Radio: {
       algorithm: true,
     },
@@ -406,30 +367,30 @@ export const globalTheme = {
 
 // export theme tokens for other components
 export const themeTokens = {
-  // primary color
-  primary: 'rgba(0, 189, 195, 1)',
-  primaryHover: 'rgba(0, 169, 175, 1)',
-  primaryActive: 'rgba(0, 149, 155, 1)',
-  primaryLight: 'rgba(0, 189, 195, 0.1)',
-  primaryLighter: 'rgba(0, 189, 195, 0.05)',
+  // primary color — Claude orange
+  primary: '#cba6f7',
+  primaryHover: '#d6baff',
+  primaryActive: '#b894e8',
+  primaryLight: 'rgba(203, 166, 247, 0.15)',
+  primaryLighter: 'rgba(203, 166, 247, 0.08)',
 
   // primary color variants
-  primary90: 'rgba(0, 189, 195, 0.9)',
-  primary80: 'rgba(0, 189, 195, 0.8)',
-  primary70: 'rgba(0, 189, 195, 0.7)',
-  primary60: 'rgba(0, 189, 195, 0.6)',
-  primary50: 'rgba(0, 189, 195, 0.5)',
-  primary40: 'rgba(0, 189, 195, 0.4)',
-  primary30: 'rgba(0, 189, 195, 0.3)',
-  primary20: 'rgba(0, 189, 195, 0.2)',
-  primary10: 'rgba(0, 189, 195, 0.1)',
-  primary05: 'rgba(0, 189, 195, 0.05)',
+  primary90: 'rgba(203, 166, 247, 0.9)',
+  primary80: 'rgba(203, 166, 247, 0.8)',
+  primary70: 'rgba(203, 166, 247, 0.7)',
+  primary60: 'rgba(203, 166, 247, 0.6)',
+  primary50: 'rgba(203, 166, 247, 0.5)',
+  primary40: 'rgba(203, 166, 247, 0.4)',
+  primary30: 'rgba(203, 166, 247, 0.3)',
+  primary20: 'rgba(203, 166, 247, 0.2)',
+  primary10: 'rgba(203, 166, 247, 0.1)',
+  primary05: 'rgba(203, 166, 247, 0.05)',
 
   // functional colors
-  success: '#52c41a',
-  warning: '#faad14',
-  error: '#ff4d4f',
-  info: 'rgba(0, 189, 195, 1)',
+  success: '#a6e3a1',
+  warning: '#f9e2af',
+  error: '#f38ba8',
+  info: '#89b4fa',
 
   // spacing
   spacing: {
@@ -443,18 +404,18 @@ export const themeTokens = {
 
   // border radius
   borderRadius: {
-    sm: 4,
-    md: 6,
-    lg: 8,
-    xl: 12,
+    sm: 6,
+    md: 8,
+    lg: 12,
+    xl: 16,
   },
 
   // shadows
   boxShadow: {
-    light: '0 1px 4px rgba(0, 0, 0, 0.1)',
-    default: '0 2px 8px rgba(0, 0, 0, 0.15)',
-    dark: '0 4px 16px rgba(0, 0, 0, 0.2)',
-    primary: '0 2px 8px rgba(0, 189, 195, 0.2)',
+    light: '0 1px 4px rgba(0, 0, 0, 0.06)',
+    default: '0 2px 8px rgba(0, 0, 0, 0.08)',
+    dark: '0 4px 16px rgba(0, 0, 0, 0.12)',
+    primary: '0 2px 8px rgba(203, 166, 247, 0.3)',
   },
 
   // animations
