@@ -76,13 +76,10 @@ export const useModelConfig = () => {
 
   // generate model options
   const generateModelOptions = () => {
-    return [
-      ...allModels.map(model => ({
-        value: model.id,
-        label: `${model.local ? t('modelModal.localModel') : t('modelModal.cloudModel')} : ${model.model_name}`,
-        loaded: model.loaded,
-      }))
-    ];
+    return allModels.map(model => ({
+      value: model.id,
+      label: model.model_name,
+    }));
   };
 
   useEffect(() => {

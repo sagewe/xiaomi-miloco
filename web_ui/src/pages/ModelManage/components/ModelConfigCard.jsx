@@ -3,7 +3,7 @@
  * This software may be used and distributed according to the terms of the Xiaomi Miloco License Agreement.
  */
 
-import React, { useMemo } from 'react';
+import React from 'react';
 import { Select, Tooltip, Typography } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { Card } from '@/components';
@@ -44,14 +44,9 @@ const ModelConfigCard = ({ models }) => {
   const generateModelOptions = () => {
     return models.map(model => ({
       value: model.id,
-      label: `${model.local ? t('modelModal.localModel') : t('modelModal.cloudModel')} : ${model.name}`,
-      loaded: model.loaded,
+      label: model.name,
     }));
   };
-
-  const modelStateHash = useMemo(() => {
-    return models.map(m => `${m.id}-${m.loaded}`).join('|');
-  }, [models]);
 
   return (
     <Card className={styles.modelConfigCard} contentClassName={styles.modelConfigCardContent}>
@@ -69,7 +64,7 @@ const ModelConfigCard = ({ models }) => {
             </Tooltip>
 
             <Select
-              key={`${item.type}-${modelStateHash}`}
+              key={item.type}
               value={currentModelConfig[item.type]}
               onChange={(value) => handleModelChange(value, item.type)}
               style={{ width: 382 }}
@@ -78,21 +73,11 @@ const ModelConfigCard = ({ models }) => {
               allowClear
               onClear={() => handleModelChange(null, item.type)}
             >
-              {generateModelOptions().map(option => {
-                return (
-                  <Option
-                    key={option.value}
-                    value={option.value}
-                    disabled={!option.loaded}
-                    style={{
-                      color: option.loaded ? 'inherit' : '#bfbfbf',
-                      cursor: option.loaded ? 'pointer' : 'not-allowed'
-                    }}
-                  >
-                    {option.label}
-                  </Option>
-                );
-              })}
+              {generateModelOptions().map(option => (
+                <Option key={option.value} value={option.value}>
+                  {option.label}
+                </Option>
+              ))}
             </Select>
           </div>
         ))}

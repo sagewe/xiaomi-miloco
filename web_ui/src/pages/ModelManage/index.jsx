@@ -29,8 +29,6 @@ const ModelManage = () => {
     loading,
     setLLMLoading,
     setLLMOptions,
-    modelLoadingStates,
-    handleSetModelLoaded,
     openModal,
     closeModal,
     handleSubmit,
@@ -94,8 +92,6 @@ const ModelManage = () => {
             onAddModel={handleAddModel}
             onEditModel={handleEditModel}
             onDeleteModel={handleDelete}
-            onSetModelLoaded={handleSetModelLoaded}
-            modelLoadingStates={modelLoadingStates}
           // onRefreshModels={fetchModels}
           />
         </div>

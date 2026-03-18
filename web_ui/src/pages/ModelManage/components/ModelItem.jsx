@@ -6,7 +6,7 @@
 import React from 'react';
 import { Button, Popconfirm } from 'antd';
 import { useTranslation } from 'react-i18next';
-import { EditOutlined, DeleteOutlined, ReloadOutlined, LoadingOutlined } from '@ant-design/icons';
+import { EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { Icon } from '@/components';
 import llmIcon from '@/assets/images/llmIcon.png';
 import styles from '../index.module.less';
@@ -24,18 +24,8 @@ const ModelItem = ({
   onEdit,
   onDelete,
   // onRefresh
-  onSetModelLoaded,
-  modelLoadingStates,
 }) => {
   const { t } = useTranslation();
-
-  const handleModelLoadToggle = () => {
-    if (onSetModelLoaded) {
-      onSetModelLoaded(model.id, !model.loaded);
-    }
-  };
-
-  const isLoading = modelLoadingStates?.[model.id] || false;
 
   return (
     <div className={styles.modelItem}>
@@ -46,18 +36,6 @@ const ModelItem = ({
         </div>
       </div>
       <div className={styles.modelActions}>
-        {model.local && onSetModelLoaded && (
-          <Button
-            type={model.loaded ? "default" : "primary"}
-            size="small"
-            loading={isLoading}
-            icon={isLoading ? <LoadingOutlined /> : null}
-            onClick={handleModelLoadToggle}
-            disabled={isLoading}
-          >
-            {model.loaded ? t('common.unload') : t('common.load')}
-          </Button>
-        )}
         {canEdit && (
           <Button
             type="text"
