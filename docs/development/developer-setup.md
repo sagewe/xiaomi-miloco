@@ -81,6 +81,7 @@ After the build is complete, the build artifacts will be output to the `dist` di
 
 ### Environment Requirements
 - Python: 3.12.x
+- Rust: stable toolchain (only required when developing the optional native agent runtime)
 
 ### Quick Start
 The backend can be developed independently without starting the AI engine, and can be configured to use cloud models.
@@ -127,6 +128,32 @@ python scripts/start_server.py
 ```
 
 After the service starts, you can access the API documentation at: `https://<your-ip>:8000/docs`
+
+#### 5. Optional: Build the Rust agent runtime locally
+
+The chat agent runtime defaults to the Python implementation. To build and enable the native runtime locally:
+
+```bash
+uvx maturin develop --manifest-path native/miloco-agent-runtime/Cargo.toml
+export MILOCO_AGENT_RUNTIME_BACKEND=rust
+python scripts/start_server.py
+```
+
+To switch back to the Python implementation:
+
+```bash
+export MILOCO_AGENT_RUNTIME_BACKEND=python
+```
+
+Docker images default to `MILOCO_AGENT_RUNTIME_BACKEND=auto`, which prefers the native wheel when it is installed and falls back to the Python runtime otherwise.
+
+#### 6. Optional: Run the offline replay benchmark
+
+Use the canned SSE replay benchmark to validate latency after native runtime changes:
+
+```bash
+uv run --with aiohttp python scripts/benchmark_agent_runtime_replay.py --scenario tool_loop --iterations 20 --warmup 3
+```
 
 ## AI Engine Development
 

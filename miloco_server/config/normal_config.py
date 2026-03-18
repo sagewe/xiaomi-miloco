@@ -82,6 +82,10 @@ CHAT_CONFIG = {
     "agent_max_steps": _config["chat"]["agent_max_steps"],
     "vision_use_img_count": _config["chat"]["vision_use_img_count"],
     "chat_history_ttl": _config["chat"]["chat_history_ttl"],
+    "agent_runtime_backend": os.getenv(
+        "MILOCO_AGENT_RUNTIME_BACKEND",
+        _config["chat"].get("agent_runtime_backend", "python"),
+    ),
 }
 
 # Trigger rule runner configuration

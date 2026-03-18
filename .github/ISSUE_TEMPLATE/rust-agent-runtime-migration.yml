@@ -1,0 +1,71 @@
+name: Rust Agent Runtime Migration
+description: Track one migration slice for the Rust agent runtime rollout.
+title: "[rust-agent-runtime] "
+labels:
+  - epic:rust-agent-runtime
+  - kind:migration
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Keep the scope to one mergeable slice. Link the parent epic and list the rollback path before implementation starts.
+  - type: input
+    id: parent_issue
+    attributes:
+      label: Parent issue
+      description: Epic or dependency issue number
+      placeholder: "#0"
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What gap or migration risk does this issue address?
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: What is explicitly included in this issue?
+    validations:
+      required: true
+  - type: textarea
+    id: out_of_scope
+    attributes:
+      label: Out of scope
+      description: What is intentionally deferred?
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies
+      description: Blocking issues, services, or release prerequisites
+      placeholder: |
+        - #2
+        - CPython 3.12 wheel
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Concrete conditions required to close the issue
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: Verification
+      description: Tests, commands, and environments used to validate the change
+    validations:
+      required: true
+  - type: textarea
+    id: rollback
+    attributes:
+      label: Rollback plan
+      description: How to disable or revert the change safely
+    validations:
+      required: true

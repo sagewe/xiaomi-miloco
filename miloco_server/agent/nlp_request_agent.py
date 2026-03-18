@@ -39,4 +39,3 @@ class NlpRequestAgent(ChatAgent):
             ))
 
         asyncio.create_task(self._run_chat(query))
-
