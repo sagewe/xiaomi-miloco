@@ -22,9 +22,11 @@ jobs:
           - target: x86_64-unknown-linux-gnu
             artifact_name: agent-runtime-wheel-x86_64
             cflags_aarch64: ""
+            smoke_import: true
           - target: aarch64-unknown-linux-gnu
             artifact_name: agent-runtime-wheel-aarch64
             cflags_aarch64: "-D__ARM_ARCH=8"
+            smoke_import: false
 
     steps:
       - name: Checkout
@@ -45,6 +47,7 @@ jobs:
           args: --release --out dist --interpreter python3.12 --manifest-path native/miloco-agent-runtime/Cargo.toml
 
       - name: Smoke import wheel
+        if: ${{ matrix.smoke_import }}
         run: |
           python3.12 -m pip install --upgrade pip
           python3.12 -m pip install dist/*.whl
