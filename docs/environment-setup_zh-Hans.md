@@ -104,6 +104,15 @@ docker compose down
 docker compose up -d
 ```
 
+后端容器默认使用 `MILOCO_AGENT_RUNTIME_BACKEND=auto`。如果镜像内已安装 `miloco-agent-runtime` 原生 wheel，则优先使用 Rust Runtime；如果 wheel 不存在，则自动回退到 Python Runtime。
+
+如需在构建镜像时固定某个 release 的 wheel，可传入以下构建参数之一：
+
+```Shell
+MILOCO_AGENT_RUNTIME_VERSION=<release-tag>
+MILOCO_AGENT_RUNTIME_WHEEL_URL=<direct-wheel-url>
+```
+
 ## 访问服务
 
 通过`https://<your ip>:8000`访问服务，如果是本机访问， IP 为`127.0.0.1`；

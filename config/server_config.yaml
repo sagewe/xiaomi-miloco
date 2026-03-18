@@ -42,6 +42,7 @@ chat:
   agent_max_steps: 10
   vision_use_img_count: 6
   chat_history_ttl: 30 #days
+  agent_runtime_backend: "python"
 
 # Trigger rule runner configuration
 trigger_rule_runner:

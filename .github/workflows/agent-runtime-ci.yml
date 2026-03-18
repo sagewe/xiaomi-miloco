@@ -1,0 +1,50 @@
+name: Agent Runtime CI
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+jobs:
+  test-agent-runtime:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Python tooling
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install maturin pytest pytest-asyncio aiohttp
+          python -m pip install --no-build-isolation -e ./miot_kit
+          python -m pip install --no-build-isolation -e ./miloco_server
+
+      - name: Check Rust formatting
+        run: cargo fmt --check --manifest-path native/miloco-agent-runtime/Cargo.toml
+
+      - name: Run Rust unit tests
+        run: cargo test --manifest-path native/miloco-agent-runtime/Cargo.toml
+
+      - name: Build and install native module
+        run: maturin develop --manifest-path native/miloco-agent-runtime/Cargo.toml
+
+      - name: Run Python integration tests
+        env:
+          PYTHONPATH: .
+        run: pytest tests/test_miloco_agent_runtime.py
+
+      - name: Smoke replay benchmark
+        run: python scripts/benchmark_agent_runtime_replay.py --scenario content --iterations 2 --warmup 1

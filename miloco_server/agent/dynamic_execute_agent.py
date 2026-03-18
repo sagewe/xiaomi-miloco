@@ -24,8 +24,9 @@ class ActionDescriptionDynamicExecuteAgent(ChatAgent):
         request_id: str,
         send_instruction_fn: Callable,
         chat_history_messages: Optional[ChatHistoryMessages] = None,
+        session_id: Optional[str] = None,
     ):
-        super().__init__(request_id, send_instruction_fn, chat_history_messages)
+        super().__init__(request_id, send_instruction_fn, chat_history_messages, session_id=session_id)
         self._actions: list[Action] = []
 
     def _parse_and_handle_event(self, event: Event) -> None:
@@ -98,3 +99,7 @@ class ActionDescriptionDynamicExecuteAgent(ChatAgent):
         else:
             self._send_instruction(Confirmation.AiGeneratedActions(actions=self._actions))
         self._send_dialog_finish(success)
+
+    def _get_runtime_request_kind(self) -> str:
+        """Dynamic execute requests use the dedicated Rust entrypoint."""
+        return "dynamic_execute"

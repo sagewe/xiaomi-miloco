@@ -80,6 +80,7 @@ npm run build
 ## 后端开发
 ### 环境要求
 - python：3.12.x
+- Rust：stable 工具链（仅在开发可选的原生 Agent Runtime 时需要）
 
 ### 快速开始
 后端可以独自开发，不依赖AI引擎启动，可以配置云端模型使用。
@@ -124,6 +125,32 @@ python scripts/start_server.py
 ```
 
 服务启动后，可以通过地址访问API文档：`https://<your-ip>:8000/docs`
+
+#### 5. 可选：本地构建 Rust Agent Runtime
+
+聊天 Agent Runtime 默认使用 Python 实现。如需在本地启用原生运行时：
+
+```bash
+uvx maturin develop --manifest-path native/miloco-agent-runtime/Cargo.toml
+export MILOCO_AGENT_RUNTIME_BACKEND=rust
+python scripts/start_server.py
+```
+
+如需切回 Python 实现：
+
+```bash
+export MILOCO_AGENT_RUNTIME_BACKEND=python
+```
+
+Docker 镜像默认使用 `MILOCO_AGENT_RUNTIME_BACKEND=auto`，已安装原生 wheel 时优先走 Rust Runtime，缺失时自动回退到 Python Runtime。
+
+#### 6. 可选：运行离线回放基准
+
+如需验证原生 Runtime 的回放延迟，可运行内置 SSE 回放基准：
+
+```bash
+uv run --with aiohttp python scripts/benchmark_agent_runtime_replay.py --scenario tool_loop --iterations 20 --warmup 3
+```
 
 ## AI引擎开发
 

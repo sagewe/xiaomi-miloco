@@ -40,6 +40,12 @@ info "Installing Python dependencies..."
 uv sync
 info "Dependencies ready ✓"
 
+# ── Optional native runtime wheel ──────────────────────────────────────────────
+if [ "${MILOCO_AGENT_RUNTIME_BACKEND:-python}" != "python" ]; then
+    info "Attempting to install the optional miloco-agent-runtime wheel..."
+    uv run python scripts/install_miloco_agent_runtime.py || warn "Native runtime wheel install failed; Python backend remains available"
+fi
+
 # ── Build frontend ─────────────────────────────────────────────────────────────
 STATIC_DIR="miloco_server/static"
 if [ -f "$STATIC_DIR/index.html" ]; then
