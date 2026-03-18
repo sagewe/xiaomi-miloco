@@ -40,7 +40,9 @@ jobs:
         run: cargo test --manifest-path native/miloco-agent-runtime/Cargo.toml
 
       - name: Build and install native module
-        run: maturin develop --manifest-path native/miloco-agent-runtime/Cargo.toml
+        run: |
+          maturin build --manifest-path native/miloco-agent-runtime/Cargo.toml --out dist
+          python -m pip install --force-reinstall dist/*.whl
 
       - name: Run Python integration tests
         env:
