@@ -10,10 +10,13 @@ import { theme } from 'antd';
 export const darkTheme = {
   algorithm: theme.darkAlgorithm,
   token: {
-    // primary color
-    colorPrimary: 'rgba(255, 255, 255, 1)',
-    colorPrimaryHover: 'rgba(255, 255, 255, 0.14)',
-    colorPrimaryActive: 'rgba(255, 255, 255, 0.14)',
+    // primary color - use teal accent for interactive elements in dark mode
+    colorPrimary: 'rgba(0, 189, 195, 1)',
+    colorPrimaryHover: 'rgba(0, 209, 215, 1)',
+    colorPrimaryActive: 'rgba(0, 169, 175, 1)',
+    colorPrimaryBg: 'rgba(0, 189, 195, 0.12)',
+    colorPrimaryBgHover: 'rgba(0, 189, 195, 0.18)',
+    colorPrimaryBorder: 'rgba(0, 189, 195, 0.5)',
 
     // border radius
     borderRadius: 6,
@@ -22,9 +25,9 @@ export const darkTheme = {
     borderRadiusXS: 2,
 
     // shadows
-    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)',
-    boxShadowSecondary: '0 1px 4px rgba(0, 0, 0, 0.2)',
-    boxShadowTertiary: '0 4px 16px rgba(0, 0, 0, 0.4)',
+    boxShadow: '0 1px 4px rgba(0, 0, 0, 0.3), 0 4px 16px rgba(0, 0, 0, 0.2)',
+    boxShadowSecondary: '0 1px 3px rgba(0, 0, 0, 0.25), 0 2px 8px rgba(0, 0, 0, 0.15)',
+    boxShadowTertiary: '0 2px 8px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.3)',
 
     // font family
     fontFamily: "'MiSans', system-ui, Avenir, Helvetica, Arial, sans-serif",
@@ -77,9 +80,9 @@ export const darkTheme = {
     Menu: {
       borderRadius: 6,
       itemBorderRadius: 4,
-      itemSelectedBg: 'rgba(255, 255, 255, 0.14)',
-      itemActiveBg: 'rgba(255, 255, 255, 0.14)',
-      itemHoverBg: 'rgba(255, 255, 255, 0.14)',
+      itemSelectedBg: 'rgba(255, 255, 255, 0.1)',
+      itemActiveBg: 'rgba(255, 255, 255, 0.08)',
+      itemHoverBg: 'rgba(255, 255, 255, 0.07)',
       itemHoverColor: 'rgba(255, 255, 255, 1)',
       itemSelectedColor: 'rgba(255, 255, 255, 1)',
       algorithm: true,
@@ -234,9 +237,9 @@ export const globalTheme = {
     borderRadiusXS: 2,
 
     // shadows
-    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
-    boxShadowSecondary: '0 1px 4px rgba(0, 0, 0, 0.1)',
-    boxShadowTertiary: '0 4px 16px rgba(0, 0, 0, 0.2)',
+    boxShadow: '0 1px 4px rgba(0, 0, 0, 0.06), 0 4px 16px rgba(0, 0, 0, 0.05)',
+    boxShadowSecondary: '0 1px 3px rgba(0, 0, 0, 0.05), 0 2px 8px rgba(0, 0, 0, 0.04)',
+    boxShadowTertiary: '0 2px 8px rgba(0, 0, 0, 0.1), 0 8px 24px rgba(0, 0, 0, 0.08)',
 
     // font family
     fontFamily: "'MiSans', system-ui, Avenir, Helvetica, Arial, sans-serif",
@@ -451,10 +454,10 @@ export const themeTokens = {
 
   // shadows
   boxShadow: {
-    light: '0 1px 4px rgba(0, 0, 0, 0.1)',
-    default: '0 2px 8px rgba(0, 0, 0, 0.15)',
-    dark: '0 4px 16px rgba(0, 0, 0, 0.2)',
-    primary: '0 2px 8px rgba(0, 189, 195, 0.2)',
+    light: '0 1px 3px rgba(0, 0, 0, 0.05), 0 2px 8px rgba(0, 0, 0, 0.04)',
+    default: '0 1px 4px rgba(0, 0, 0, 0.06), 0 4px 16px rgba(0, 0, 0, 0.05)',
+    dark: '0 2px 8px rgba(0, 0, 0, 0.1), 0 8px 24px rgba(0, 0, 0, 0.08)',
+    primary: '0 2px 10px rgba(0, 189, 195, 0.18)',
   },
 
   // animations
