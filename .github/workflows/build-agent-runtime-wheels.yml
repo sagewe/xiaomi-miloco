@@ -1,0 +1,62 @@
+name: Build Agent Runtime Wheels
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "native/miloco-agent-runtime/**"
+      - ".github/workflows/build-agent-runtime-wheels.yml"
+  workflow_dispatch:
+  release:
+    types:
+      - published
+
+jobs:
+  build-wheels:
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            artifact_name: agent-runtime-wheel-x86_64
+          - target: aarch64-unknown-linux-gnu
+            artifact_name: agent-runtime-wheel-aarch64
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build wheel
+        uses: PyO3/maturin-action@v1
+        with:
+          target: ${{ matrix.target }}
+          manylinux: "2014"
+          args: --release --out dist --interpreter python3.12 --manifest-path native/miloco-agent-runtime/Cargo.toml
+
+      - name: Smoke import wheel
+        run: |
+          python3.12 -m pip install --upgrade pip
+          python3.12 -m pip install dist/*.whl
+          python3.12 - <<'PY'
+          import miloco_agent_runtime
+          assert hasattr(miloco_agent_runtime, "AgentRuntime")
+          PY
+
+      - name: Upload wheel artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: dist/*.whl
+
+      - name: Upload wheel to release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.whl

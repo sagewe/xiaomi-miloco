@@ -103,7 +103,10 @@ class ChatAgentDispatcher:
         if event.judge_type("Nlp", "Request"):
             logger.info("[%s] create nlp request agent", self.request_id)
             self._chat_agent = NlpRequestAgent(
-                self.request_id, self._handle_instruction_payload, self._chat_history_messages,
+                self.request_id,
+                self._handle_instruction_payload,
+                self._chat_history_messages,
+                session_id=self.session_id,
             )
             logger.info("[%s] send event to nlp request agent", self.request_id)
             self._chat_agent.handle_event(event)
@@ -111,7 +114,10 @@ class ChatAgentDispatcher:
         elif event.judge_type("Nlp", "ActionDescriptionDynamicExecute"):
             logger.info("[%s] create nlp action description dynamic execute agent", self.request_id)
             self._chat_agent = ActionDescriptionDynamicExecuteAgent(
-                self.request_id, self._handle_instruction_payload, self._chat_history_messages,
+                self.request_id,
+                self._handle_instruction_payload,
+                self._chat_history_messages,
+                session_id=self.session_id,
             )
             logger.info("[%s] send event to nlp action descriptions dynamic execute agent", self.request_id)
             self._chat_agent.handle_event(event)

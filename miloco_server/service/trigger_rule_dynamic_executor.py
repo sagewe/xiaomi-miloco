@@ -54,7 +54,10 @@ class TriggerRuleDynamicExecutor:
         self._done = asyncio.Event()
 
         chat_agent = ActionDescriptionDynamicExecuteAgent(
-            self.request_id, self._handle_instruction_payload, None,
+            self.request_id,
+            self._handle_instruction_payload,
+            None,
+            session_id=self.session_id,
         )
 
         mock_event_payload = Nlp.ActionDescriptionDynamicExecute(

@@ -17,6 +17,7 @@ from miloco_server.middleware.exceptions import LLMServiceException, ResourceNot
 from miloco_server.schema.chat_history_schema import ChatHistoryMessages
 from miloco_server.schema.chat_schema import Dialog, Event, InstructionPayload, Template
 from miloco_server.schema.mcp_schema import CallToolResult, LocalMcpClientId
+from miloco_server.agent.rust_runtime_adapter import RustRuntimeAdapter
 from miloco_server.utils.chat_companion import ChatCachedData
 from miloco_server.utils.local_models import ModelPurpose
 
@@ -39,6 +40,7 @@ class ChatAgent:
         request_id: str,
         send_instruction_fn: Callable,
         chat_history_messages: Optional[ChatHistoryMessages] = None,
+        session_id: Optional[str] = None,
     ):
         """Initialize ReAct agent.
 
@@ -51,6 +53,7 @@ class ChatAgent:
         self._manager = get_manager()
 
         self._request_id = request_id
+        self._session_id = session_id or request_id
         self._chat_companion = self._manager.chat_companion
         self._llm_proxy = self._manager.get_llm_proxy_by_purpose(
             ModelPurpose.PLANNING)
@@ -64,6 +67,7 @@ class ChatAgent:
 
         self._send_instruction_fn = send_instruction_fn
         self._max_steps = CHAT_CONFIG["agent_max_steps"]
+        self._runtime_adapter = RustRuntimeAdapter(self)
 
         self._init_conversation(chat_history_messages)
 
@@ -150,7 +154,13 @@ class ChatAgent:
             self._chat_history_messages.add_content(
                 "user", f"request_id: {self._request_id}, query: {query}")
 
-            success, error_message = await self._cyclic_execute()
+            if self._runtime_adapter.should_use_rust():
+                success, error_message = await self._runtime_adapter.run(
+                    query,
+                    self._get_runtime_request_kind(),
+                )
+            else:
+                success, error_message = await self._cyclic_execute()
 
         except Exception as e:  # pylint: disable=broad-except
             logger.error(
@@ -438,6 +448,10 @@ class ChatAgent:
     def _is_completion_step(self, finish_reason: Optional[str]) -> bool:
         """Check if this is a completion step."""
         return finish_reason == "stop"
+
+    def _get_runtime_request_kind(self) -> str:
+        """Return the Rust runtime entrypoint used by this agent."""
+        return "nlp"
 
     def _get_system_prompt(self) -> str:
         """Get system prompt."""

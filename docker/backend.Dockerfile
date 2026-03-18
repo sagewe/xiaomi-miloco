@@ -6,6 +6,8 @@
 # - https://mirrors.aliyun.com/pypi/simple/
 # - https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple
 ARG PIP_INDEX_URL=https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple
+ARG MILOCO_AGENT_RUNTIME_VERSION=
+ARG MILOCO_AGENT_RUNTIME_WHEEL_URL=
 
 
 ################################################
@@ -29,6 +31,7 @@ FROM python:3.12-slim AS backend-base
 ARG PIP_INDEX_URL
 
 ENV TZ=Asia/Shanghai
+ENV MILOCO_AGENT_RUNTIME_BACKEND=auto
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 # Set working directory.
@@ -59,12 +62,18 @@ WORKDIR /app
 COPY miloco_server /app/miloco_server
 COPY config/server_config.yaml /app/config/server_config.yaml
 COPY config/prompt_config.yaml /app/config/prompt_config.yaml
+COPY scripts/install_miloco_agent_runtime.py /app/install_miloco_agent_runtime.py
 COPY scripts/start_server.py /app/start_server.py
 COPY miot_kit /app/miot_kit
 
 # Install project.
 RUN pip install --no-build-isolation -e /app/miloco_server \
     && pip install --no-build-isolation -e /app/miot_kit \
+    && if [ -n "$MILOCO_AGENT_RUNTIME_VERSION" ] || [ -n "$MILOCO_AGENT_RUNTIME_WHEEL_URL" ]; then \
+         MILOCO_AGENT_RUNTIME_VERSION="$MILOCO_AGENT_RUNTIME_VERSION" \
+         MILOCO_AGENT_RUNTIME_WHEEL_URL="$MILOCO_AGENT_RUNTIME_WHEEL_URL" \
+         python3 /app/install_miloco_agent_runtime.py; \
+       fi \
     && rm -rf /app/miloco_server/static \
     && rm -rf /app/miloco_server/.temp \
     && rm -rf /app/miloco_server/.log

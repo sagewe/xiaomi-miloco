@@ -89,6 +89,15 @@ docker compose down
 # Start containers
 docker compose up -d
 ```
+
+The backend container defaults to `MILOCO_AGENT_RUNTIME_BACKEND=auto`. If the native `miloco-agent-runtime` wheel is available in the image, the Rust runtime is used; otherwise the service falls back to the Python runtime automatically.
+
+To pin a released wheel during image build, pass one of these build arguments:
+
+```Shell
+MILOCO_AGENT_RUNTIME_VERSION=<release-tag>
+MILOCO_AGENT_RUNTIME_WHEEL_URL=<direct-wheel-url>
+```
 ## Access the Service
 
 Access the service via `https://<your ip>:8000`. For local access, IP is `127.0.0.1`;

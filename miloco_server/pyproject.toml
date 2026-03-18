@@ -7,7 +7,7 @@ name = "miloco-server"
 version = "0.0.1"
 description = "High-performance microservice system built on FastAPI, supporting smart home, AI chat, and MCP protocol features."
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 authors = [
     {name = "Miloco team", email = "xiaomi-miloco@xiaomi.com"}
 ]
@@ -56,7 +56,7 @@ package-dir = {"" = "."}
 
 [tool.black]
 line-length = 88
-target-version = ['py311']
+target-version = ['py312']
 include = '\.pyi?$'
 
 [tool.pytest.ini_options]
