@@ -29,7 +29,6 @@ const ModelManage = () => {
     loading,
     setLLMLoading,
     setLLMOptions,
-    cudaInfo,
     modelLoadingStates,
     handleSetModelLoaded,
     openModal,
@@ -95,7 +94,6 @@ const ModelManage = () => {
             onAddModel={handleAddModel}
             onEditModel={handleEditModel}
             onDeleteModel={handleDelete}
-            cudaInfo={cudaInfo}
             onSetModelLoaded={handleSetModelLoaded}
             modelLoadingStates={modelLoadingStates}
           // onRefreshModels={fetchModels}

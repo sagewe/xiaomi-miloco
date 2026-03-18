@@ -24,21 +24,10 @@ const ModelItem = ({
   onEdit,
   onDelete,
   // onRefresh
-  cudaInfo,
   onSetModelLoaded,
   modelLoadingStates,
 }) => {
   const { t } = useTranslation();
-
-  const getVramUsageText = () => {
-    if (!model.local || !model.estimate_vram_usage || !cudaInfo?.total || !cudaInfo?.free) {
-      return '';
-    }
-    const estimated = (model.estimate_vram_usage || 0).toFixed(2);
-    const free = (cudaInfo?.free || 0).toFixed(2);
-    const total = (cudaInfo?.total || 0).toFixed(2);
-    return `(${t('modelModal.estimated')} ${estimated}GB | ${t('modelModal.available')} ${free}GB | ${t('modelModal.total')} ${total}GB)`;
-  };
 
   const handleModelLoadToggle = () => {
     if (onSetModelLoaded) {
@@ -54,11 +43,6 @@ const ModelItem = ({
         <img src={llmIcon} className={styles.modelIcon} />
         <div className={styles.modelNameContainer}>
           <span className={styles.modelName}>{model.name}</span>
-          {model.local && (
-            <span className={styles.vramUsage}>
-              {getVramUsageText()}
-            </span>
-          )}
         </div>
       </div>
       <div className={styles.modelActions}>

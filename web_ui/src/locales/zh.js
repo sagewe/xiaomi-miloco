@@ -317,7 +317,6 @@ export default {
     modelConfigUpdateFailed: '模型配置更新失败',
     localModel: '本地',
     cloudModel: '云端',
-    fetchCudaInfoFailed: '获取CUDA信息失败',
     modelNotFound: '未找到对应模型',
     modelLoadSuccess: '模型加载成功',
     modelUnloadSuccess: '模型卸载成功',

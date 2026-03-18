@@ -25,7 +25,6 @@ const ModelServiceCard = ({
   onEditModel,
   onDeleteModel,
   // onRefreshModels
-  cudaInfo,
   onSetModelLoaded,
   modelLoadingStates,
 }) => {
@@ -50,7 +49,6 @@ const ModelServiceCard = ({
                     model={model}
                     canEdit={false}
                     canDelete={false}
-                    cudaInfo={cudaInfo}
                     onSetModelLoaded={onSetModelLoaded}
                     modelLoadingStates={modelLoadingStates}
                   />

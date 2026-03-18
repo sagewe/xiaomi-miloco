@@ -6,7 +6,7 @@
 import { useState, useEffect } from 'react';
 import { message } from 'antd';
 import { useTranslation } from 'react-i18next';
-import { getAllModels, deleteModel, createModel, updateModel, getCudaInfo, setModelLoad } from '@/api';
+import { getAllModels, deleteModel, createModel, updateModel, setModelLoad } from '@/api';
 
 /**
  * useModelManagement - Model management hooks
@@ -20,30 +20,13 @@ export const useModelManagement = () => {
   const [editingModel, setEditingModel] = useState(null);
   const [llmOptions, setLLMOptions] = useState([]);
   const [llmLoading, setLLMLoading] = useState(false);
-  const [cudaInfo, setCudaInfo] = useState(null);
   const [modelLoadingStates, setModelLoadingStates] = useState({});
   const [loading, setLoading] = useState(true);
 
   const refreshModels = async () => {
     setLoading(true);
     await fetchModels();
-    await fetchCudaInfo();
     setLoading(false);
-  };
-
-  // fetch CUDA info
-  const fetchCudaInfo = async () => {
-    try {
-      const res = await getCudaInfo();
-      if (res && res.code === 0) {
-        setCudaInfo(res.data);
-      } else {
-        message.error(res?.message || t('modelModal.fetchCudaInfoFailed'));
-      }
-    } catch (error) {
-      console.error('fetch CUDA info failed:', error);
-      message.error(t('modelModal.fetchCudaInfoFailed'));
-    }
   };
 
   // set model loaded state
@@ -178,10 +161,8 @@ export const useModelManagement = () => {
     loading,
     setLLMLoading,
     setLLMOptions,
-    cudaInfo,
     modelLoadingStates,
     fetchModels,
-    fetchCudaInfo,
     handleSetModelLoaded,
     openModal,
     closeModal,

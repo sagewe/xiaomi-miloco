@@ -315,7 +315,6 @@ export default {
     modelConfigUpdateFailed: 'Model configuration update failed',
     localModel: 'Local',
     cloudModel: 'Cloud',
-    fetchCudaInfoFailed: 'Failed to get CUDA information',
     modelNotFound: 'Corresponding model not found',
     modelLoadSuccess: 'Model loaded successfully',
     modelUnloadSuccess: 'Model unloaded successfully',

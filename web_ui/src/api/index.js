@@ -45,7 +45,6 @@ export const deleteModel = (modelId) => deleteApi(`/api/model/${modelId}`);
 export const getVendorModels = (data) => postApi('/api/model/get_vendor_models', data);
 export const setCurrentModel = (modelId, purpose = '') => getApi(`/api/model/set_current_model?${purpose ? `purpose=${purpose}` : ''}${modelId ? `&model_id=${modelId}` : ''}`);
 export const getModelPurposes = () => getApi('/api/model/model_purposes');
-export const getCudaInfo = () => getApi('/api/model/get_cuda_info');
 export const setModelLoad = (data) => postApi('/api/model/load', data, 60000);
 // Home Assistant API
 export const setHAAuth = (data) => postApi('/api/ha/set_config', data);
