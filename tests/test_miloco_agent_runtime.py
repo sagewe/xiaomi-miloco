@@ -393,6 +393,68 @@ async def test_agent_runtime_bridge_reports_tool_errors_when_executor_raises():
     )
 
 
+def test_agent_runtime_bridge_applies_tool_finished_event_results():
+    class FakeToolExecutor:
+        def get_server_name(self, client_id):
+            assert client_id == "client"
+            return "Mock Service"
+
+    class FakeHistory:
+        def __init__(self):
+            self.tool_messages = []
+
+        def add_tool_call_res_content(self, tool_call_id, tool_name, content):
+            self.tool_messages.append((tool_call_id, tool_name, content))
+
+    class FakeAgent:
+        def __init__(self):
+            self._request_id = "req-1"
+            self._tool_executor = FakeToolExecutor()
+            self._chat_history_messages = FakeHistory()
+            self.instructions = []
+            self.post_processed = []
+
+        def _send_instruction(self, payload):
+            self.instructions.append(payload)
+
+        def _post_process_tool_call(self, client_id, service_name, tool_name, parameters, result):
+            self.post_processed.append(
+                (client_id, service_name, tool_name, parameters, result.success)
+            )
+
+    bridge = AgentRuntimeBridge(FakeAgent())
+    bridge.emit_event(
+        json.dumps(
+            {
+                "type": "tool_call_finished",
+                "payload": {
+                    "tool_call_id": "call_0",
+                    "function_name": "client___tool",
+                    "success": True,
+                    "response": {"ok": True},
+                    "parameters": {"city": "Paris"},
+                },
+            }
+        )
+    )
+
+    assert bridge._agent._chat_history_messages.tool_messages[0] == (
+        "call_0",
+        "tool",
+        json.dumps({"ok": True}),
+    )
+    assert bridge._agent.post_processed[0] == (
+        "client",
+        "Mock Service",
+        "tool",
+        {"city": "Paris"},
+        True,
+    )
+    assert [payload.__class__.__name__ for payload in bridge._agent.instructions] == [
+        "CallToolResult",
+    ]
+
+
 @pytest.mark.asyncio
 async def test_runtime_reports_failure_when_upstream_stream_errors():
     miloco_agent_runtime = pytest.importorskip("miloco_agent_runtime")

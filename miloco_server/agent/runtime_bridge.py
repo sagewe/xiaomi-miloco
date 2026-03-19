@@ -155,28 +155,13 @@ class AgentRuntimeBridge:
             )
             result = CallToolResult(success=False, error_message=str(exc), response=None)
 
-        response_json = json.dumps(result.response, ensure_ascii=False) if result.response is not None else None
-        self._agent._send_instruction(
-            Template.CallToolResult(
-                id=tool_call_id,
-                success=result.success,
-                tool_response=response_json,
-                error_message=result.error_message,
-            )
-        )
-
-        tool_call_content = response_json if result.success else result.error_message
-        self._agent._chat_history_messages.add_tool_call_res_content(
-            tool_call_id,
-            tool_name,
-            tool_call_content or "",
-        )
-        self._agent._post_process_tool_call(
-            client_id,
-            service_name,
-            tool_name,
-            parameters,
-            result,
+        response_json = self._apply_tool_result(
+            tool_call_id=tool_call_id,
+            client_id=client_id,
+            service_name=service_name,
+            tool_name=tool_name,
+            parameters=parameters,
+            result=result,
         )
 
         return ToolInvocationResultPayload(
@@ -200,10 +185,30 @@ class AgentRuntimeBridge:
             error_message=payload.error_message,
             response=payload.response,
         )
+        self._apply_tool_result(
+            tool_call_id=payload.tool_call_id,
+            client_id=client_id,
+            service_name=service_name,
+            tool_name=tool_name,
+            parameters=payload.parameters,
+            result=result,
+        )
+
+    def _apply_tool_result(
+        self,
+        *,
+        tool_call_id: str,
+        client_id: str,
+        service_name: str,
+        tool_name: str,
+        parameters: dict[str, object],
+        result: CallToolResult,
+    ) -> str | None:
+        """Apply a tool execution result to instructions, history, and post processing."""
         response_json = json.dumps(result.response, ensure_ascii=False) if result.response is not None else None
         self._agent._send_instruction(
             Template.CallToolResult(
-                id=payload.tool_call_id,
+                id=tool_call_id,
                 success=result.success,
                 tool_response=response_json,
                 error_message=result.error_message,
@@ -211,7 +216,7 @@ class AgentRuntimeBridge:
         )
         tool_call_content = response_json if result.success else result.error_message
         self._agent._chat_history_messages.add_tool_call_res_content(
-            payload.tool_call_id,
+            tool_call_id,
             tool_name,
             tool_call_content or "",
         )
@@ -219,6 +224,7 @@ class AgentRuntimeBridge:
             client_id,
             service_name,
             tool_name,
-            payload.parameters,
+            parameters,
             result,
         )
+        return response_json
