@@ -330,6 +330,13 @@ get_runtime_environment(){
     fi
 }
 
+inspect_runtime_environment() {
+    get_system_info
+    get_runtime_environment
+    print_system_info
+    print_runtime_environment
+}
+
 print_service_status(){
     print_info "Service status: "
     if ! is_service_installed; then
@@ -550,10 +557,7 @@ quick_install() {
     check_root
     
     # Check runtime environment
-    get_system_info
-    get_runtime_environment
-    print_system_info
-    print_runtime_environment
+    inspect_runtime_environment
     
     if ! is_supported_backend; then
         return 0
@@ -841,17 +845,11 @@ show_menu() {
             3) update_service ;;
             4) stop_service ;;
             5)
-                get_system_info
-                get_runtime_environment
-                print_system_info
-                print_runtime_environment
+                inspect_runtime_environment
                 install_runtime_environment
             ;;
             6)
-                get_system_info
-                get_runtime_environment
-                print_system_info
-                print_runtime_environment
+                inspect_runtime_environment
                 print_service_status
             ;;
             7) uninstall ;;
@@ -882,17 +880,11 @@ main() {
             update_service) update_service ;;
             stop_service) stop_service ;;
             install_runtime_env)
-                get_system_info
-                get_runtime_environment
-                print_system_info
-                print_runtime_environment
+                inspect_runtime_environment
                 install_runtime_environment
             ;;
             check_runtime_env)
-                get_system_info
-                get_runtime_environment
-                print_system_info
-                print_runtime_environment
+                inspect_runtime_environment
             ;;
             uninstall) uninstall ;;
             help) show_help ;;
