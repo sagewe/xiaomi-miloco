@@ -23,9 +23,9 @@ DOCKER_CONTAINERS=("${PROJECT_CODE}-backend")
 PROJECT_HOME_DIR="${HOME}/.${PROJECT_CODE}"
 PROJECT_CONFIG_FILE="${PROJECT_HOME_DIR}/${PROJECT_CODE}.conf"
 
-SUPPORT_OS=("Linux")            # Linux, macOS
+SUPPORT_OS=("Linux")
 SUPPORT_OS_DISTRO=("ubuntu" "debian" "amzn" "fedora" "kylin" "rhel" "azl" "opensuse" "sles")
-SUPPORT_ARCH=("x86_64")         # x86_64, arm64
+SUPPORT_ARCH=("x86_64")
 
 # Configuration
 INSTALL_DIR="${HOME}"
@@ -256,9 +256,6 @@ get_system_info() {
             OS_VERSION_ID="Unknown"
             OS_DISTRO="Unknown"
         fi
-        elif [[ "${OSTYPE}" == "darwin"* ]]; then
-        OS="macOS"
-        OS_VERSION=$(sw_vers -productVersion)
     else
         OS="Unknown"
         OS_VERSION="Unknown"
@@ -271,10 +268,6 @@ get_system_info() {
         # Kernel version (for Linux)
         KERNEL_VERSION=$(uname -r)
         MEMORY=$(awk '/MemTotal/ {printf "%.2f", $2/1024/1024}' /proc/meminfo)
-        elif [ "$OS" = "Darwin" ]; then
-        local TOTAL_MEM_BYTES=$(sysctl -n hw.memsize)
-        KERNEL_VERSION="Unknown"
-        MEMORY=$(awk -v bytes="$TOTAL_MEM_BYTES" 'BEGIN {printf "%.2f", bytes/1024/1024/1024}')
     else
         KERNEL_VERSION="Unknown"
         MEMORY=0
@@ -768,9 +761,6 @@ install_runtime_environment() {
             return 1
         fi
         print_log "Backend-only installation, skipping optional GPU runtime setup"
-        elif [[ "$OS" == "macOS" ]]; then
-        print_warning "Please install Docker Desktop for Mac manually from https://www.docker.com/products/docker-desktop"
-        return 1
     else
         print_error "Unsupported operating system: ${OS}"
         return 1
