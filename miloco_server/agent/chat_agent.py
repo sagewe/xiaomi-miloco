@@ -154,7 +154,15 @@ class ChatAgent:
             self._chat_history_messages.add_content(
                 "user", f"request_id: {self._request_id}, query: {query}")
 
-            if self._runtime_adapter.should_use_rust():
+            use_rust_backend = self._runtime_adapter.should_use_rust()
+            logger.info(
+                "[%s] Using %s runtime backend (configured=%s)",
+                self._request_id,
+                "Rust" if use_rust_backend else "Python",
+                self._runtime_adapter.configured_backend,
+            )
+
+            if use_rust_backend:
                 success, error_message = await self._runtime_adapter.run(
                     query,
                     self._get_runtime_request_kind(),
