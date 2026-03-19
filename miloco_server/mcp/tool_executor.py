@@ -3,18 +3,19 @@
 
 """Tool executor module for executing and managing MCP tools."""
 
-import json
 import logging
 from typing import Any, Optional
 
-from miloco_server.schema.mcp_schema import CallToolResult
 from miloco_server.mcp.mcp_client_manager import MCPClientManager
+from miloco_server.mcp.tool_contract import (
+    TOOL_NAME_CONNECT_CHARS,
+    parse_openai_tool_call,
+)
+from miloco_server.schema.mcp_schema import CallToolResult
 from openai.types.chat import ChatCompletionMessageToolCall, ChatCompletionToolParam
 from openai.types.shared.function_definition import FunctionDefinition
 
 logger = logging.getLogger(__name__)
-
-TOOL_NAME_CONNECT_CHARS = "___"
 
 class ToolExecutor:
     """Executor for managing and executing MCP tools."""
@@ -132,52 +133,18 @@ class ToolExecutor:
 
     def parse_tool_call(self, tool_call: ChatCompletionMessageToolCall) -> tuple[str, str, dict[str, Any]]:
         logger.info("ToolExecutor parse_tool_call: %s", tool_call)
-
-        tool_name = tool_call.function.name
-        parameters_str = tool_call.function.arguments
-
-        # Parse parameter string to dictionary - handle multiple escape situations
         try:
+            parsed = parse_openai_tool_call(tool_call)
             logger.info(
-                "ToolExecutor parse_tool_call parameters_str: %s type: %s",
-                parameters_str,
-                type(parameters_str))
-            if parameters_str:
-                parameters = parameters_str
-                # Loop parse until get dictionary type or cannot continue parsing
-                parse_count = 0
-                while isinstance(parameters, str) and parse_count < 5:  # Parse at most 5 times to prevent infinite loop
-                    try:
-                        parameters = json.loads(parameters)
-                        parse_count += 1
-                        logger.info(
-                            "ToolExecutor parse_tool_call parameters after parse %d: %s type: %s",
-                            parse_count,
-                            parameters,
-                            type(parameters))
-                    except json.JSONDecodeError as e:
-                        logger.error("Parse attempt %d failed: %s, parameters: %s", parse_count + 1, e, parameters)
-                        break
-
-                # If final result is still string, cannot parse as JSON, return empty dictionary
-                if isinstance(parameters, str):
-                    logger.warning(
-                        "Parameters cannot be parsed as dictionary, final result is still string: %s",
-                        parameters)
-                    parameters = {}
-            else:
-                parameters = {}
-            logger.info("ToolExecutor parse_tool_call final parameters: %s type: %s", parameters, type(parameters))
+                "ToolExecutor parse_tool_call parsed client_id=%s tool_name=%s parameters=%s",
+                parsed.client_id,
+                parsed.tool_name,
+                parsed.parameters,
+            )
+            return parsed.client_id, parsed.tool_name, parsed.parameters
         except Exception as e:  # pylint: disable=broad-exception-caught
             logger.error("Failed to parse tool call: %s, error: %s", tool_call, e)
-            parameters = {}
-
-        if TOOL_NAME_CONNECT_CHARS in tool_name:
-            client_id, tool_name = tool_name.split(TOOL_NAME_CONNECT_CHARS, 1)
-        else:
-            client_id = "unknown"
-
-        return client_id, tool_name, parameters
+            return "unknown", tool_call.function.name, {}
 
     def get_server_name(self, client_id: str) -> str:
         client = self.mcp_client_manager.get_client(client_id)

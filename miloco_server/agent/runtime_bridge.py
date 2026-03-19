@@ -14,7 +14,10 @@ from openai.types.chat.chat_completion_message_tool_call import (
     ChatCompletionMessageToolCall,
 )
 
-from miloco_server.mcp.tool_executor import TOOL_NAME_CONNECT_CHARS
+from miloco_server.mcp.tool_contract import (
+    parse_tool_arguments,
+    split_tool_name,
+)
 from miloco_server.schema.chat_schema import Template
 from miloco_server.schema.mcp_schema import CallToolResult
 
@@ -34,35 +37,6 @@ class RuntimeExecutionResult:
 
     success: bool = False
     error_message: Optional[str] = None
-
-
-def split_tool_name(function_name: str) -> tuple[str, str]:
-    """Split MCP function names of the form client___tool."""
-    if TOOL_NAME_CONNECT_CHARS in function_name:
-        return tuple(function_name.split(TOOL_NAME_CONNECT_CHARS, 1))
-    return "unknown", function_name
-
-
-def parse_tool_arguments(parameters_str: Optional[str]) -> dict[str, Any]:
-    """Mirror ToolExecutor.parse_tool_call JSON parsing without needing a tool call object."""
-    if not parameters_str:
-        return {}
-
-    parameters: Any = parameters_str
-    parse_count = 0
-    while isinstance(parameters, str) and parse_count < 5:
-        try:
-            parameters = json.loads(parameters)
-            parse_count += 1
-        except json.JSONDecodeError:
-            break
-
-    if isinstance(parameters, str):
-        return {}
-    if isinstance(parameters, dict):
-        return parameters
-    return {}
-
 
 class AgentRuntimeBridge:
     """Python callbacks exposed to the Rust runtime."""
