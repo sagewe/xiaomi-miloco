@@ -35,8 +35,17 @@ GitHub tracking epic: [#2](https://github.com/sagewe/xiaomi-miloco/issues/2)
   - workflow artifacts include both wheel files:
     - `miloco_agent_runtime-0.1.0-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl`
     - `miloco_agent_runtime-0.1.0-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl`
-- Remaining rollout step:
-  - Validate asset upload against a draft or published GitHub Release tag
+  - draft release upload validation completed via workflow run `23275968351`
+  - release asset upload preserves `isDraft=true` after switching to `gh release upload`
+
+## Final rollout status
+
+The Rust runtime migration has been validated end to end:
+
+- runtime integration merged to `main`
+- CI parity and wheel builds green on `main`
+- manual draft-release upload validated with both wheel assets present
+- release upload path no longer depends on a Node 20-based JavaScript action
 
 ## Manual release-upload validation
 
@@ -46,6 +55,10 @@ Use the `Build Agent Runtime Wheels` workflow in `workflow_dispatch` mode with:
 - `release_tag = <existing draft release tag>`
 
 This keeps the normal `release.published` path unchanged while allowing wheel asset upload to be tested against a prepared draft release before a real publish.
+
+## Cleanup note
+
+The migration work created a large number of temporary local `codex/*` branches during the issue/PR loop. Remote branches and validation releases have been cleaned up. If local branch deletion is blocked by the execution environment, it is safe to remove the merged local `codex/*` branches manually later.
 
 ## Issue template checklist
 
