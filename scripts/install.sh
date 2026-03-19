@@ -31,7 +31,6 @@ SUPPORT_ARCH=("x86_64")         # x86_64, arm64
 INSTALL_DIR="${HOME}"
 INSTALL_FULL_DIR="${INSTALL_DIR}/${PROJECT_CODE}"
 DOCKER_COMPOSE_FILE="docker-compose.yaml"
-INSTALL_MODE="UnKnown"  # legacy value, normalized to lite for backend-only installs
 INSTALL_FROM="Unknown"  # github, xiaomi-fds
 
 # System variables
@@ -496,18 +495,12 @@ set_service_config() {
 is_service_installed() {
     # Get service config and check.
     INSTALL_DIR=$(get_service_config "INSTALL_DIR" "${PROJECT_CONFIG_FILE}")
-    INSTALL_MODE=$(get_service_config "INSTALL_MODE" "${PROJECT_CONFIG_FILE}")
     INSTALL_FROM=$(get_service_config "INSTALL_FROM" "${PROJECT_CONFIG_FILE}")
-    if [ "${INSTALL_MODE}" == "full" ]; then
-        INSTALL_MODE="lite"
-    fi
-    # print_log "INSTALL_DIR: ${INSTALL_DIR}, INSTALL_MODE: ${INSTALL_MODE}"
-    if [[ "${INSTALL_DIR}" == "Unknown" || "${INSTALL_MODE}" == "Unknown" || "${INSTALL_FROM}" == "Unknown" ]]; then
+    if [[ "${INSTALL_DIR}" == "Unknown" || "${INSTALL_FROM}" == "Unknown" ]]; then
         return 1
     fi
     INSTALL_FULL_DIR="${INSTALL_DIR}/${PROJECT_CODE}"
     if [ -d "${INSTALL_FULL_DIR}" ] && [ -f "${INSTALL_FULL_DIR}/${DOCKER_COMPOSE_FILE}" ]; then
-        # print_log "Service is installed at ${INSTALL_FULL_DIR}, mode: ${INSTALL_MODE}"
         return 0
     else
         return 1
@@ -611,7 +604,6 @@ quick_install() {
     if is_service_installed; then
         print_warning "The service has been installed. Reinstallation will overwrite the original files"
         print_log_e "Install Directory: ${YELLOW}${INSTALL_FULL_DIR}${NC}"
-        print_log_e "Install Mode     : ${YELLOW}${INSTALL_MODE}${NC}"
         read -rp "[✳️ OPTION]  Do you want to reinstall? (yes/No): "
         if [ "${REPLY}" != "yes" ]; then
             print_tip "Re-installation cancelled"
@@ -645,7 +637,6 @@ quick_install() {
     
     INSTALL_DIR="${install_dir_new}"
     INSTALL_FULL_DIR="${INSTALL_DIR}/${PROJECT_CODE}"
-    INSTALL_MODE="lite"
     mkdir -p "${INSTALL_FULL_DIR}"
     
     # Check backend port
@@ -659,7 +650,6 @@ quick_install() {
     print_log "Set configuration..."
     mkdir -p "${PROJECT_HOME_DIR}"
     set_service_config "INSTALL_DIR" "${INSTALL_DIR}" "${PROJECT_CONFIG_FILE}"
-    set_service_config "INSTALL_MODE" "${INSTALL_MODE}" "${PROJECT_CONFIG_FILE}"
     set_service_config "INSTALL_FROM" "${INSTALL_FROM}" "${PROJECT_CONFIG_FILE}"
     
     if ! install_runtime_environment; then
@@ -692,7 +682,7 @@ install_service(){
         mv "${INSTALL_FULL_DIR}/.env" "${INSTALL_FULL_DIR}/.env.bak"
         print_info "Backup .env file: ${INSTALL_FULL_DIR}/.env.bak"
     fi
-    wget -O "${INSTALL_FULL_DIR}/${DOCKER_COMPOSE_FILE}" "${FDS_BASE_URL}/docker-compose-${INSTALL_MODE}.yaml"
+    wget -O "${INSTALL_FULL_DIR}/${DOCKER_COMPOSE_FILE}" "${FDS_BASE_URL}/docker-compose-lite.yaml"
     print_log "Get docker-compose.yaml completed: ${INSTALL_FULL_DIR}/${DOCKER_COMPOSE_FILE}"
     wget -O "${INSTALL_FULL_DIR}/.env" "${FDS_BASE_URL}/.env.example"
     print_log "Get .env completed: ${INSTALL_FULL_DIR}/.env"
