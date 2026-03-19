@@ -46,11 +46,13 @@ class TriggerRuleDynamicExecutor:
         self._session: ChatHistorySession = ChatHistorySession()
         self._web_sockets: list[WebSocket] = []
         self._done: Optional[asyncio.Event] = None
+        self._loop: Optional[asyncio.AbstractEventLoop] = None
         self._camera_motion_dict = camera_motion_dict
         logger.info("[%s] TriggerRuleDynamicExecutor init", self.request_id)
 
     async def run(self) -> bool:
         """Start the dynamic executor and wait for completion."""
+        self._loop = asyncio.get_running_loop()
         self._done = asyncio.Event()
 
         chat_agent = ActionDescriptionDynamicExecuteAgent(
@@ -107,7 +109,7 @@ class TriggerRuleDynamicExecutor:
 
         instruction = Instruction.build_instruction(instruction_payload, self.request_id, self.session_id)
         self._session.add_instruction(instruction)
-        asyncio.create_task(self._send_instruction(instruction))
+        self._schedule_coroutine(self._send_instruction(instruction))
 
     async def _send_instruction(self, instruction: Instruction):
         """Send instruction to all connected WebSockets."""
@@ -180,6 +182,14 @@ class TriggerRuleDynamicExecutor:
                         and web_socket.client_state.value == 3):
                     logger.info("[%s] WebSocket already closed", self.request_id)
                     continue
-                asyncio.create_task(web_socket.close())
+                self._schedule_coroutine(web_socket.close())
         except Exception as e:  # pylint: disable=broad-except
             logger.error("[%s] Error closing WebSocket: %s", self.request_id, e)
+
+    def _schedule_coroutine(self, coroutine):
+        """Schedule work on the executor's owning event loop."""
+        if self._loop is None:
+            self._loop = asyncio.get_running_loop()
+        if self._loop.is_closed():
+            raise RuntimeError("TriggerRuleDynamicExecutor event loop is closed")
+        self._loop.call_soon_threadsafe(self._loop.create_task, coroutine)

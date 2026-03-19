@@ -33,6 +33,7 @@ class ChatAgentDispatcher:
                  web_socket: WebSocket,
                  request_id: str,
                  session_id: Optional[str] = None):
+        self._loop = asyncio.get_running_loop()
         self.web_socket = web_socket
         self.request_id = request_id
         self.session_id = session_id if session_id is not None else str(uuid.uuid4())
@@ -78,7 +79,7 @@ class ChatAgentDispatcher:
                 instruction_payload, self.request_id, self.session_id)
 
             self._chat_history_storage.session.add_instruction(instruction)
-            asyncio.create_task(self._send_instruction(instruction))
+            self._schedule_coroutine(self._send_instruction(instruction))
         except Exception as e:  # pylint: disable=broad-except
             logger.error("[%s] Error in _handle_instruction_payload: %s", self.request_id, e)
             self._close_web_socket()
@@ -173,8 +174,14 @@ class ChatAgentDispatcher:
                 logger.info("[%s] WebSocket already closed", self.request_id)
                 self.web_socket = None
                 return
-            asyncio.create_task(self.web_socket.close())
+            self._schedule_coroutine(self.web_socket.close())
         except Exception as e:  # pylint: disable=broad-except
             logger.error("[%s] Error closing WebSocket: %s", self.request_id, e)
         finally:
             self.web_socket = None
+
+    def _schedule_coroutine(self, coroutine):
+        """Schedule work on the dispatcher's owning event loop."""
+        if self._loop.is_closed():
+            raise RuntimeError("Dispatcher event loop is closed")
+        self._loop.call_soon_threadsafe(self._loop.create_task, coroutine)
