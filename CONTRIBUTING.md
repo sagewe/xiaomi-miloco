@@ -25,14 +25,6 @@ If you encounter an error in the project, please [report an issue](https://githu
     server:
       log_level: "debug"
     ```
-  - Inference service:
-
-    The inference service configuration file is located at `config/ai_engine_config.yaml`. If using Docker deployment, the configuration file will be placed in the same directory as where Docker is started on the host machine, in the subdirectory `./config/ai_engine_config.yaml`
-    ```yaml
-    # Modify config file settings
-    server:
-      log_level: "debug"
-    ```
 
 - Log file paths are as follows:
   - When starting from source code, log files are in the project root directory `./log/` folder
@@ -104,4 +96,3 @@ footer: (Optional) Associated issue.
 ### Other Naming Conventions
 
 - In documentation, when Chinese sentences contain English, if the English is not enclosed in Chinese quotation marks, there must be a space between the Chinese and English. (It's best to write code comments this way as well)
-

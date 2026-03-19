@@ -4,24 +4,22 @@ Language selection: [English](./environment-setup.md) | [Simplified Chinese](./e
 
 ------
 
-The service consists of two parts: the main service and the AI engine. The runtime environment requirements are as follows:
+The service runs as a single backend service. The runtime environment requirements are as follows:
 
-Main Service:
+Backend Service:
 - System Requirements:
 - - **Linux**: x86_64 + ARM64 architecture; Ubuntu 22.04 LTS or later is recommended
 - - **Windows**: x86_64 + ARM64 architecture under **WSL2**; Windows 11 22H2 or later is recommended
 - - **macOS**: x86_64 + ARM64 architecture
 
-AI Engine:
-- System Requirements:
-- - **Linux**: x86_64 architecture; Ubuntu 22.04 LTS or later is recommended
-- - **Windows**: x86_64 architecture under **WSL2**; Windows 11 22H2 or later is recommended
-- - **macOS**: Not supported
+Optional local visual model host:
+- Additional Requirements:
+- - **Linux**: x86_64 architecture is recommended for local visual models
+- - **Windows**: x86_64 architecture under **WSL2** is recommended for local visual models
+- - **macOS**: local visual model support depends on your chosen model/runtime
 - GPU Requirements:
 - - **NVIDIA**: 30-series or above is recommended; 8GB or more VRAM; driver version 527.41 or above; CUDA version 12.5.1 or above
-- - **AMD**: Not supported
-- - **Intel**: Not supported
-- - **MThreads**: Not supported
+- - Other accelerators: verify compatibility with the local model/runtime you plan to use
 
 Software Requirements:
 - **Python**: Python 3.10 or above

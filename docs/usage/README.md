@@ -75,8 +75,8 @@ Implementation: In the AI Hub, describe rule-based requirements using natural la
 3. Click "Confirm" to save the settings.
 #### Adding Local Models
 The startup script will automatically download and configure the default model. You can also customize models using the following method:
-1. Modify the models configuration in the config/ai_engine_config.yaml file by adding/editing custom model names and configuration items. The model_path (mmproj_path) should point to the absolute address of the local model file.
-2. Restart the inference engine service.
+1. Use the Model Management page in the web UI to add or edit local model entries. The local model path, including `mmproj` when required, should point to the absolute path of the model file on disk.
+2. Restart the backend service if the updated local model configuration is not picked up immediately.
 #### Advanced Settings
 - The planning LLM is used for Query intent analysis, task planning, and tool invocation. Using cloud-based models will deliver better performance.
 - The visual understanding LLM is used for processing and interpreting camera visual data. Xiaomi's self-developed on-device model is recommended.
@@ -86,4 +86,3 @@ The startup script will automatically download and configure the default model. 
 3. Example: Select the MCP service type, enter the name, URL, and request headers to successfully connect to a weather MCP. During conversations, selecting the weather MCP allows you to perform weather queries.
 
     <img src="../../assets/images/MCP_Services.png" width="40%" />  <img src="../../assets/images/Use_MCP_Services.png" width="40%" />
-

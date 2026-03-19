@@ -1,6 +1,6 @@
 #!/bin/bash
 # Miloco Setup Script
-# Sets up and runs miloco_server using external LLM API (no AI Engine needed)
+# Sets up and runs miloco_server using external LLM APIs only
 
 set -e
 

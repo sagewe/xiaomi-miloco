@@ -83,7 +83,7 @@ npm run build
 - Rust：stable 工具链（仅在开发可选的原生 Agent Runtime 时需要）
 
 ### 快速开始
-后端可以独自开发，不依赖AI引擎启动，可以配置云端模型使用。
+后端可以独立开发，不依赖单独的推理服务启动，也可以直接配置云端模型使用。
 
 #### 1. 安装miot_kit
 ```bash
@@ -152,26 +152,6 @@ Docker 镜像默认使用 `MILOCO_AGENT_RUNTIME_BACKEND=auto`，已安装原生 
 uv run --with aiohttp python scripts/benchmark_agent_runtime_replay.py --scenario tool_loop --iterations 20 --warmup 3
 ```
 
-## AI引擎开发
-
-```bash
-
-# 安装依赖
-pip install -e miloco_ai_engine
-
-# 编译 core
-bash scripts/ai_engine_cuda_build.sh
-
-# 配置动态库路径
-export LD_LIBRARY_PATH=project_root/output/lib:$LD_LIBRARY_PATH
-
-# 运行服务
-python scripts/start_ai_engine.py
-
-```
-  
-服务启动后，可以通过地址访问API文档：`https://<your-ip>:8001/docs`
-
 # 项目配置
 
 通过修改配置文件在启动前配置服务的行为，可以自定义。
@@ -181,7 +161,6 @@ python scripts/start_ai_engine.py
 - [后端服务配置](../../config/server_config.yaml)
 - [prompt配置](../../config/prompt_config.yaml)
 
-## AI引擎配置:
-- [AI引擎服务配置](../../config/ai_engine_config.yaml)
+本仓库已不再包含独立 AI 引擎服务，也没有单独的 `ai_engine_config.yaml`。本地模型路径请在 Web UI 的模型管理页面中维护。
 
   

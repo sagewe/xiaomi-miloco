@@ -14,10 +14,10 @@ PROJECT_ROOT=$(dirname "$SCRIPT_DIR")
 
 function build() {
     # Build Docker image, default tag: dev
-    # Usage: $SCRIPT_NAME build [all|ai_engine|backend] [DOCKER_BUILD_PARAMS]
+    # Usage: $SCRIPT_NAME build [all|backend] [DOCKER_BUILD_PARAMS]
     if [ $# -gt 2 ]; then
         echo "Error: Too many arguments."
-        echo "Usage: $SCRIPT_NAME $FUNC_NAME [all|ai_engine|backend] [DOCKER_BUILD_PARAMS]"
+        echo "Usage: $SCRIPT_NAME $FUNC_NAME [all|backend] [DOCKER_BUILD_PARAMS]"
         exit 1
     fi
     local image_name="all"
@@ -30,13 +30,7 @@ function build() {
     echo "Building image: $image_name, params: $options"
     case "$image_name" in
         all)
-            "$FUNC_NAME" ai_engine $options
             "$FUNC_NAME" backend $options
-        ;;
-        ai_engine)
-            local build_cmd="docker build $options -t $DOCKER_PREFIX/${PROJECT_CODE}-$image_name:$image_tag --target $image_name -f $PROJECT_ROOT/docker/$image_name.cuda.Dockerfile ."
-            echo "eval: $build_cmd"
-            eval $build_cmd
         ;;
         backend)
             local build_cmd="docker build $options -t $DOCKER_PREFIX/${PROJECT_CODE}-$image_name:$image_tag --target $image_name -f $PROJECT_ROOT/docker/$image_name.Dockerfile ."
@@ -45,57 +39,36 @@ function build() {
         ;;
         *)
             echo "Error: Invalid image name: $image_name"
-            echo "Usage: $SCRIPT_NAME $FUNC_NAME [all|ai_engine|backend] [DOCKER_BUILD_PARAMS]"
+            echo "Usage: $SCRIPT_NAME $FUNC_NAME [all|backend] [DOCKER_BUILD_PARAMS]"
             exit 1
         ;;
     esac
 }
 
 function tag() {
-    # Usage: tag all|ai_engine|backend [SRC_TAG, default: latest] [DEST_TAG, default: from pyproject.toml]
+    # Usage: tag all|backend [SRC_TAG, default: latest] [DEST_TAG, default: from pyproject.toml]
     if [ $# -gt 3 ]; then
         echo "Error: Too many arguments."
-        echo "Usage: $SCRIPT_NAME $FUNC_NAME all|ai_engine|backend [SRC_TAG, default: latest] [DEST_TAG, default: from pyproject.toml]"
+        echo "Usage: $SCRIPT_NAME $FUNC_NAME all|backend [SRC_TAG, default: latest] [DEST_TAG, default: from pyproject.toml]"
         exit 1
     fi
     local image_name="all"
     local source_tag="latest"
     local dest_tag=""
-    
+
     if [ $# -gt 0 ]; then
         image_name="$1"
     fi
     if [ $# -gt 1 ]; then
         source_tag="$2"
     fi
-    
-    if [[ "$image_name" == "all" || "$image_name" == "ai_engine" ]]; then
-        # ai_engine
-        local image_full_name="${DOCKER_PREFIX}/${PROJECT_CODE}-ai_engine"
-        if [ $# -gt 2 ]; then
-            dest_tag="$3"
-        else
-            dest_tag=$(grep -E '^version\s*=' "$PROJECT_ROOT/miloco_ai_engine/pyproject.toml" | head -n1 | sed -E 's/^version\s*=\s*"(.*)"/\1/')
-            dest_tag="v${dest_tag#v}"
-        fi
-        echo "Tagging image: $image_full_name, source tag: $source_tag, dest tag: $dest_tag"
-        if ! docker image inspect "$image_full_name:$source_tag" >/dev/null 2>&1; then
-            echo "Error: Image $image_full_name:$source_tag not found."
-            exit 1
-        fi
-        docker tag "$image_full_name:$source_tag" "$image_full_name:$dest_tag"
-        # List docker images.
-        echo "List docker images: "
-        docker images --filter=reference="$image_full_name*"
-    fi
-    
+
     if [[ "$image_name" == "all" || "$image_name" == "backend" ]]; then
-        # backend
         local image_full_name="${DOCKER_PREFIX}/${PROJECT_CODE}-backend"
         if [ $# -gt 2 ]; then
             dest_tag="$3"
         else
-            dest_tag=$(grep -E '^version\s*=' "$PROJECT_ROOT/miloco_server/pyproject.toml" | head -n1 | sed -E 's/^version\s*=\s*"(.*)"/\1/')
+            dest_tag=$(grep -E '^version\s*=' "$PROJECT_ROOT/miloco_server/pyproject.toml" | head -n1 | sed -E 's/^version\s*=\s*\"(.*)\"/\1/')
             dest_tag="v${dest_tag#v}"
         fi
         echo "Tagging image: $image_full_name, source tag: $source_tag, dest tag: $dest_tag"
@@ -104,15 +77,19 @@ function tag() {
             exit 1
         fi
         docker tag "$image_full_name:$source_tag" "$image_full_name:$dest_tag"
-        # List docker images.
         echo "List docker images: "
         docker images --filter=reference="$image_full_name*"
+        return 0
     fi
+
+    echo "Error: Invalid image name: $image_name"
+    echo "Usage: $SCRIPT_NAME $FUNC_NAME all|backend [SRC_TAG, default: latest] [DEST_TAG, default: from pyproject.toml]"
+    exit 1
 }
 
 function push() {
     # Push Docker images to registry, supports custom registry including GitHub
-    # Usage: push [all|ai_engine|backend] [TAG, default: latest] [REGISTRY, default: docker.io] [OPTIONS]
+    # Usage: push [all|backend] [TAG, default: latest] [REGISTRY, default: docker.io] [OPTIONS]
     local image_name="all"
     local image_tag="latest"
     local registry="${DOCKER_REGISTRY}"
@@ -165,23 +142,24 @@ function push() {
     
     case "$image_name" in
         all)
-            "$FUNC_NAME" ai_engine "$image_tag" "$registry" $options
             "$FUNC_NAME" backend "$image_tag" "$registry" $options
         ;;
-        ai_engine|backend)
-            local image_full_name="$DOCKER_PREFIX/$image_name"
+        backend)
+            local image_full_name="$DOCKER_PREFIX/${PROJECT_CODE}-$image_name"
             local target_image="$registry_prefix$image_full_name:$image_tag"
             
             # For GitHub Container Registry, image names should be lowercase
             if [[ "$registry" == *"ghcr.io"* ]]; then
-                target_image="$registry_prefix$(echo "$DOCKER_PREFIX" | tr '[:upper:]' '[:lower:]')/$image_name:$image_tag"
-                image_full_name="$(echo "$DOCKER_PREFIX" | tr '[:upper:]' '[:lower:]')/$image_name"
+                local ghcr_prefix
+                ghcr_prefix="$(echo "$DOCKER_PREFIX" | tr '[:upper:]' '[:lower:]')"
+                target_image="$registry_prefix${ghcr_prefix}/${PROJECT_CODE}-$image_name:$image_tag"
+                image_full_name="${ghcr_prefix}/${PROJECT_CODE}-$image_name"
             fi
             
             # First tag the image for the target registry if needed
             if [[ "$registry_prefix" != "" ]]; then
-                echo "Tagging $DOCKER_PREFIX/$image_name:$image_tag for registry: $target_image"
-                docker tag "$DOCKER_PREFIX/$image_name:$image_tag" "$target_image"
+                echo "Tagging $DOCKER_PREFIX/${PROJECT_CODE}-$image_name:$image_tag for registry: $target_image"
+                docker tag "$DOCKER_PREFIX/${PROJECT_CODE}-$image_name:$image_tag" "$target_image"
             fi
             
             # Push the image
@@ -190,7 +168,7 @@ function push() {
         ;;
         *)
             echo "Error: Invalid image name: $image_name"
-            echo "Usage: $SCRIPT_NAME $FUNC_NAME [all|ai_engine|backend] [REGISTRY] [TAG] [OPTIONS]"
+            echo "Usage: $SCRIPT_NAME $FUNC_NAME [all|backend] [REGISTRY] [TAG] [OPTIONS]"
             exit 1
         ;;
     esac
@@ -208,7 +186,7 @@ function push() {
 
 function save() {
     # Save Docker images to tar files
-    # Usage: save [all|ai_engine|backend] [TAG, default: latest] [OUTPUT_DIR, default: ../docker]
+    # Usage: save [all|backend] [TAG, default: latest] [OUTPUT_DIR, default: ../docker]
     local image_name="all"
     local output_dir="$PROJECT_ROOT/docker"
     local image_tag="latest"
@@ -228,11 +206,10 @@ function save() {
     
     case "$image_name" in
         all)
-            "$FUNC_NAME" ai_engine "$image_tag" "$output_dir"
             "$FUNC_NAME" backend "$image_tag" "$output_dir"
         ;;
-        ai_engine|backend)
-            local image_full_name="$DOCKER_PREFIX/$image_name"
+        backend)
+            local image_full_name="$DOCKER_PREFIX/${PROJECT_CODE}-$image_name"
             local output_file="$output_dir/${image_full_name//\//_}_$image_tag.tar"
             
             echo "Saving $image_full_name:$image_tag to $output_file"
@@ -246,7 +223,7 @@ function save() {
         ;;
         *)
             echo "Error: Invalid image name: $image_name"
-            echo "Usage: $SCRIPT_NAME $FUNC_NAME [all|ai_engine|backend] [TAG] [OUTPUT_DIR]"
+            echo "Usage: $SCRIPT_NAME $FUNC_NAME [all|backend] [TAG] [OUTPUT_DIR]"
             exit 1
         ;;
     esac
@@ -270,29 +247,26 @@ Function Details:
 
 build
   Build Docker image, default tag: dev
-  Usage: $SCRIPT_NAME build [all|ai_engine|backend] [DOCKER_BUILD_PARAMS]
+  Usage: $SCRIPT_NAME build [all|backend] [DOCKER_BUILD_PARAMS]
 
   Examples:
     $SCRIPT_NAME build                              # Build all images
-    $SCRIPT_NAME build ai_engine                    # Build ai_engine image
     $SCRIPT_NAME build backend --no-cache           # Build backend with no cache
     $SCRIPT_NAME build backend "--no-cache --more"  # Build backend with multiple parameters
 
 tag
   Tag existing Docker images
-  Usage: $SCRIPT_NAME tag all|ai_engine|backend [SRC_TAG] [DEST_TAG]
+  Usage: $SCRIPT_NAME tag all|backend [SRC_TAG] [DEST_TAG]
 
   Examples:
-    $SCRIPT_NAME tag ai_engine                # Tag ai_engine with version from pyproject.toml
     $SCRIPT_NAME tag backend latest v1.0.0    # Tag backend from latest to v1.0.0
 
 push
   Push Docker images to registry, supports custom registry including GitHub
-  Usage: $SCRIPT_NAME push [all|ai_engine|backend] [TAG] [REGISTRY] [OPTIONS]
+  Usage: $SCRIPT_NAME push [all|backend] [TAG] [REGISTRY] [OPTIONS]
 
   Examples:
     $SCRIPT_NAME push                         # Push all images with latest tag to docker.io
-    $SCRIPT_NAME push ai_engine v1.0.0        # Push ai_engine v1.0.0 to docker.io
     $SCRIPT_NAME push all latest my-registry.com  # Push all images to custom registry
     $SCRIPT_NAME push backend latest ghcr.io/github_user/repo  # Push to GitHub Container Registry
 
@@ -302,12 +276,11 @@ push
 
 save
   Save Docker images to tar files
-  Usage: $SCRIPT_NAME save [all|ai_engine|backend] [TAG] [OUTPUT_DIR]
+  Usage: $SCRIPT_NAME save [all|backend] [TAG] [OUTPUT_DIR]
 
   Examples:
     $SCRIPT_NAME save                             # Save all images with latest tag to ../docker
     $SCRIPT_NAME save backend dev                 # Save backend dev image to ../docker
-    $SCRIPT_NAME save ai_engine prod /tmp/images  # Save ai_engine prod image to /tmp/images
 
 Notes:
   - Default project code: $PROJECT_CODE
@@ -329,5 +302,3 @@ else
     echo "Error: func '$FUNC_NAME' undefined"
     exit 1
 fi
-
-

@@ -157,26 +157,6 @@ Use the canned SSE replay benchmark to validate latency after native runtime cha
 uv run --with aiohttp python scripts/benchmark_agent_runtime_replay.py --scenario tool_loop --iterations 20 --warmup 3
 ```
 
-## AI Engine Development
-
-```bash
-
-# Install dependencies
-pip install -e miloco_ai_engine
-
-# Build core
-bash scripts/ai_engine_cuda_build.sh
-
-# Configure dynamic library path
-export LD_LIBRARY_PATH=project_root/output/lib:$LD_LIBRARY_PATH
-
-# Run service
-python scripts/start_ai_engine.py
-
-```
-  
-After the service starts, you can access the API documentation at: `https://<your-ip>:8001/docs`
-
 # Project Configuration
 
 Configure service behavior before startup by modifying configuration files, which can be customized.
@@ -186,5 +166,4 @@ Configure service behavior before startup by modifying configuration files, whic
 - [Backend Service Configuration](../../config/server_config.yaml)
 - [Prompt Configuration](../../config/prompt_config.yaml)
 
-## AI Engine Configuration:
-- [AI Engine Service Configuration](../../config/ai_engine_config.yaml)
+Local model paths are managed from the Model Management page in the web UI. There is no separate standalone AI engine service or `ai_engine_config.yaml` file in this repository anymore.

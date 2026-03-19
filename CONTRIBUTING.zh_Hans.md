@@ -25,14 +25,6 @@
     server:
       log_level: "debug"
     ```
-  - 推理服务：
-
-    推理服务配置配置文件在 `config/ai_engine_config.yaml` 中。如果使用docker部署，配置文件会放在宿主机启动docker的同级目录下，子目录为 `./config/ai_engine_config.yaml`
-    ```yaml
-    # 修改 config 文件配置
-    server:
-      log_level: "debug"
-    ```
 
 - 日志保存路径如下：
   - 源代码启动时，日志文件在项目根目录 `./log/` 目录中

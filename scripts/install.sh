@@ -10,16 +10,14 @@ PROJECT_NAME="Xiaomi Miloco"
 PROJECT_CODE="miloco"
 SCRIPT_VERSION="v0.0.7"
 BACKEND_PORT=8000
-AI_ENGINE_PORT=8001
 MIRROR_GET_DOCKER="Aliyun" # Aliyun|AzureChinaCloud
 # https://cdn.cnbj1.fds.api.mi-img.com/xiaomi-miloco
 FDS_BASE_URL="${FDS_BASE_URL:-https://xiaomi-miloco.cnbj1.mi-fds.com/xiaomi-miloco}"
 CDN_BASE_URL="${CDN_BASE_URL:-https://cdn.cnbj1.fds.api.mi-img.com/xiaomi-miloco}"
 DOCKER_CMD="docker"
 DOCKER_IMAGE_BACKEND_NAME="xiaomi/${PROJECT_CODE}-backend"
-DOCKER_IMAGE_AI_ENGINE_NAME="xiaomi/${PROJECT_CODE}-ai_engine"
-DOCKER_IMAGES=("${DOCKER_IMAGE_BACKEND_NAME}" "${DOCKER_IMAGE_AI_ENGINE_NAME}")
-DOCKER_CONTAINERS=("${PROJECT_CODE}-backend" "${PROJECT_CODE}-ai_engine")
+DOCKER_IMAGES=("${DOCKER_IMAGE_BACKEND_NAME}")
+DOCKER_CONTAINERS=("${PROJECT_CODE}-backend")
 
 # Config path
 PROJECT_HOME_DIR="${HOME}/.${PROJECT_CODE}"
@@ -35,7 +33,7 @@ MIN_GPU_MEMORY_GB=7.8
 INSTALL_DIR="${HOME}"
 INSTALL_FULL_DIR="${INSTALL_DIR}/${PROJECT_CODE}"
 DOCKER_COMPOSE_FILE="docker-compose.yaml"
-INSTALL_MODE="UnKnown"  # full, lite
+INSTALL_MODE="UnKnown"  # legacy value, normalized to lite for backend-only installs
 INSTALL_FROM="Unknown"  # github, xiaomi-fds
 MODELS_DL_FROM="Unknown" # modelscope, huggingface, xiaomi-fds
 
@@ -238,15 +236,8 @@ is_number() {
 }
 
 print_system_info(){
-    local print_mode="full"
     local un_supported=()
-    
-    if [ $# -ge 1 ]; then
-        if [ "$1" == "lite" ]; then
-            print_mode="lite"
-        fi
-    fi
-    
+
     if ! in_array "$OS" "${SUPPORT_OS[@]}"; then
         un_supported+=("OS")
     fi
@@ -263,14 +254,7 @@ print_system_info(){
     print_log "- Kernel Version: ${KERNEL_VERSION}"
     print_log "- Memory: ${MEMORY} GB"
     print_log "- WSL Version: ${WSL_VERSION}"
-    
-    if [ "${print_mode}" == "full" ]; then
-        # Check if GPU is supported
-        if ! in_array "$GPU_VENDOR" "${SUPPORT_GPU_VENDOR[@]}"; then
-            un_supported+=("GPU Vendor")
-        fi
-        print_log "- GPU Vendor: ${GPU_VENDOR}"
-    fi
+    print_log "- GPU Vendor: ${GPU_VENDOR}"
     
     if [ ${#un_supported[@]} -gt 0 ]; then
         print_error "Unsupported system configuration:"
@@ -382,15 +366,8 @@ get_wsl_version() {
 }
 
 print_runtime_environment(){
-    local print_mode="full"
     local missing_deps=()
-    
-    if [ $# -ge 1 ]; then
-        if [ "$1" == "lite" ]; then
-            print_mode="lite"
-        fi
-    fi
-    
+
     if [ "${DEPEND_DOCKER}" == "Unknown" ]; then
         missing_deps+=("Docker")
     fi
@@ -401,38 +378,7 @@ print_runtime_environment(){
     print_info "Runtime Environment:"
     print_log "- Docker: ${DEPEND_DOCKER}"
     print_log "- Docker Compose: ${DEPEND_DOCKER_COMPOSE}"
-    
-    
-    if [ "${print_mode}" == "full" ]; then
-        if [ "${DEPEND_GPU_MEMORY}" == "Unknown" ]; then
-            missing_deps+=("GPU Memory < ${MIN_GPU_MEMORY_GB}")
-        fi
-        
-        if [ "$GPU_VENDOR" = "NVIDIA" ]; then
-            if [ "${DEPEND_NVIDIA_DRIVER}" == "Unknown" ]; then
-                missing_deps+=("NVIDIA Driver")
-            fi
-            # if [ "${DEPEND_NVIDIA_CUDA_TOOLKIT}" == "Unknown" ]; then
-            #     missing_deps+=("NVIDIA CUDA Toolkit")
-            # fi
-            if [ "${DEPEND_NVIDIA_CONTAINER_TOOLKIT}" == "Unknown" ]; then
-                missing_deps+=("NVIDIA Container Toolkit")
-            fi
-            print_log "- GPU Model: ${GPU_MODEL}"
-            print_log "- NVIDIA Driver: ${DEPEND_NVIDIA_DRIVER}"
-            print_log "- GPU MEMORY: ${GPU_MEMORY} GB"
-            print_log "- CUDA Toolkit: ${DEPEND_NVIDIA_CUDA_TOOLKIT}"
-            print_log "- NVIDIA Container Toolkit: ${DEPEND_NVIDIA_CONTAINER_TOOLKIT}"
-            elif [ "$GPU_VENDOR" = "AMD" ]; then
-            if [ "${DEPEND_AMD_DRIVER}" == "Unknown" ]; then
-                missing_deps+=("AMD Driver")
-            fi
-            print_log "- AMD Driver: ${DEPEND_AMD_DRIVER}"
-            print_log "- GPU MEMORY: ${GPU_MEMORY} GB"
-        fi
-    fi
-    
-    
+
     if [ ${#missing_deps[@]} -gt 0 ]; then
         print_error "Missing dependencies:"
         for dep in "${missing_deps[@]}"; do
@@ -441,42 +387,6 @@ print_runtime_environment(){
     else
         print_success "All runtime environment requirements are met"
     fi
-    
-    if [ "${GPU_VENDOR}" == "Unknown" ] && [ "${WSL_VERSION}" == "WSL2" ]; then
-        print_tip "Detected that you are currently in a ${YELLOW}WSL2${NC} environment. If you use ${YELLOW}NVIDIA GPU${NC}, \nyou can try to download the ${YELLOW}NVIDIA APP${NC} first, Install the driver and continue."
-        print_log_e "  🌐 Worldwide: https://www.nvidia.com/en-us/software/nvidia-app/"
-        print_log_e "  🌐 中国大陆: https://www.nvidia.cn/software/nvidia-app/"
-    fi
-}
-
-is_supported_ai_engine() {
-    if [ "${DEPEND_GPU_MEMORY}" == "Unknown" ]; then
-        return 1
-    fi
-    if [ "$GPU_VENDOR" == "NVIDIA" ]; then
-        if [ "${DEPEND_NVIDIA_DRIVER}" == "Unknown" ]; then
-            return 1
-        fi
-        # if [ "${DEPEND_NVIDIA_CUDA_TOOLKIT}" == "Unknown" ]; then
-        #     return 1
-        # fi
-        if [ "${DEPEND_NVIDIA_CONTAINER_TOOLKIT}" == "Unknown" ]; then
-            return 1
-        fi
-        if ! in_array "${OS_DISTRO}${OS_VERSION_ID}" "${SUPPORT_OS_DISTRO_NVIDIA[@]}"; then
-            print_error "${GPU_VENDOR} not support ${OS_DISTRO}${OS_VERSION_ID}"
-            return 1
-        fi
-        elif [ "$GPU_VENDOR" == "AMD" ]; then
-        if [ "${DEPEND_AMD_DRIVER}" == "Unknown" ]; then
-            return 1
-        fi
-        if ! in_array "${OS_DISTRO}${OS_VERSION_ID}" "${SUPPORT_OS_DISTRO_AMD[@]}"; then
-            print_error "${GPU_VENDOR} not support ${OS_DISTRO}${OS_VERSION_ID}"
-            return 1
-        fi
-    fi
-    return 0
 }
 
 get_runtime_environment(){
@@ -710,6 +620,9 @@ is_service_installed() {
     INSTALL_DIR=$(get_service_config "INSTALL_DIR" "${PROJECT_CONFIG_FILE}")
     INSTALL_MODE=$(get_service_config "INSTALL_MODE" "${PROJECT_CONFIG_FILE}")
     INSTALL_FROM=$(get_service_config "INSTALL_FROM" "${PROJECT_CONFIG_FILE}")
+    if [ "${INSTALL_MODE}" == "full" ]; then
+        INSTALL_MODE="lite"
+    fi
     # print_log "INSTALL_DIR: ${INSTALL_DIR}, INSTALL_MODE: ${INSTALL_MODE}"
     if [[ "${INSTALL_DIR}" == "Unknown" || "${INSTALL_MODE}" == "Unknown" || "${INSTALL_FROM}" == "Unknown" ]]; then
         return 1
@@ -738,7 +651,7 @@ is_service_running() {
 download_models() {
     # TODO: Use download script, and check md5
     if [ "${INSTALL_MODE}" != "full" ]; then
-        print_log "Install without AI Engine, skipping model download"
+        print_log "Skipping model download"
         return 0
     fi
     if [ ! -d "${INSTALL_FULL_DIR}/models" ]; then
@@ -773,7 +686,7 @@ download_models() {
 download_models_fds() {
     # TODO: Use download script
     if [ "${INSTALL_MODE}" != "full" ]; then
-        print_log "Install without AI Engine, skipping model download"
+        print_log "Skipping model download"
         return 0
     fi
     local need_dl="no"
@@ -859,15 +772,6 @@ download_docker_images() {
         ${DOCKER_CMD} tag "${DOCKER_IMAGE_BACKEND_NAME}:${latest_version}" "${DOCKER_IMAGE_BACKEND_NAME}:latest"
     fi
     
-    if [ "${INSTALL_MODE}" == "full" ]; then
-        ${DOCKER_CMD} rmi "${DOCKER_IMAGE_AI_ENGINE_NAME}:${latest_version}" 2>/dev/null || true
-        ${DOCKER_CMD} rmi "${DOCKER_IMAGE_AI_ENGINE_NAME}:latest" 2>/dev/null || true
-        ${DOCKER_CMD} load -i "${INSTALL_FULL_DIR}/${latest_version}/ai_engine.tar"
-        if ${DOCKER_CMD} image inspect "${DOCKER_IMAGE_AI_ENGINE_NAME}:${latest_version}" >/dev/null 2>&1; then
-            ${DOCKER_CMD} tag "${DOCKER_IMAGE_AI_ENGINE_NAME}:${latest_version}" "${DOCKER_IMAGE_AI_ENGINE_NAME}:latest"
-        fi
-    fi
-    
     rm -rf "${INSTALL_FULL_DIR}/${latest_version}"
     print_success "Docker images loaded successfully"
 }
@@ -942,101 +846,6 @@ quick_install() {
     
     INSTALL_DIR="${install_dir_new}"
     INSTALL_FULL_DIR="${INSTALL_DIR}/${PROJECT_CODE}"
-    INSTALL_MODE="full"
-    mkdir -p "${INSTALL_FULL_DIR}"
-    
-    # Check backend port
-    BACKEND_PORT=$(get_valid_port "${BACKEND_PORT}" "Miloco Back-end")
-    # Check AI Engine port
-    AI_ENGINE_PORT=$(get_valid_port "${AI_ENGINE_PORT}" "Miloco AI Engine")
-    
-    if [ "${BACKEND_PORT}" == "${AI_ENGINE_PORT}" ]; then
-        print_error "The AI Engine and Backend service are using the same port ${RED}${BACKEND_PORT}${NC}, please try again."
-        return 1
-    fi
-    
-    install_service_from
-    
-    config_install_env
-    
-    # Create configuration directory
-    print_log "Set configuration..."
-    mkdir -p "${PROJECT_HOME_DIR}"
-    set_service_config "INSTALL_DIR" "${INSTALL_DIR}" "${PROJECT_CONFIG_FILE}"
-    set_service_config "INSTALL_MODE" "${INSTALL_MODE}" "${PROJECT_CONFIG_FILE}"
-    set_service_config "INSTALL_FROM" "${INSTALL_FROM}" "${PROJECT_CONFIG_FILE}"
-    
-    if ! install_runtime_environment; then
-        print_error "Failed to install runtime environment"
-        return 1
-    fi
-    
-    get_runtime_environment
-    
-    if ! is_supported_ai_engine; then
-        print_runtime_environment
-        print_error "System unsupported MILOCO AI Engine, please install without AI Engine"
-        return 0
-    fi
-    
-    install_service
-    stop_service
-    start_service
-}
-
-quick_install_lite() {
-    print_header
-    print_info "Performing quick installation(Without AI Engine)..."
-    check_root
-    
-    # Check runtime environment
-    get_system_info
-    get_runtime_environment
-    print_system_info "lite"
-    print_runtime_environment "lite"
-    
-    if ! is_supported_backend; then
-        return 0
-    fi
-    
-    # Check if already installed
-    if is_service_installed; then
-        print_warning "The service has been installed. Reinstallation will overwrite the original files"
-        print_log_e "- Install Directory: ${YELLOW}${INSTALL_FULL_DIR}${NC}"
-        print_log_e "- Install Mode     : ${YELLOW}${INSTALL_MODE}${NC}"
-        read -rp "[✳️ OPTION]  Do you want to reinstall? (yes/No): "
-        if [ "${REPLY}" != "yes" ]; then
-            print_tip "Re-installation cancelled"
-            return 0
-        fi
-        # Stop service
-        stop_service
-    else
-        INSTALL_DIR="${HOME}"
-        INSTALL_FULL_DIR="${INSTALL_DIR}/${PROJECT_CODE}"
-    fi
-    
-    local install_dir_new="Unknown"
-    print_log ""
-    read -rp "[✳️ INPUT] Please enter install directory [Default: ${INSTALL_DIR}]: " install_dir_new
-    if [ -z "${install_dir_new}" ]; then
-        install_dir_new="${INSTALL_DIR}"
-        print_log_e "Using default install directory: ${GREEN}${install_dir_new}${NC}"
-    else
-        print_log_e "Using custom install directory: ${GREEN}${install_dir_new}${NC}"
-    fi
-    if [ ! -d "${install_dir_new}" ]; then
-        print_error "Install directory does not exist: ${install_dir_new}"
-        return 1
-    fi
-    
-    if [ ! -r "${install_dir_new}" ] || [ ! -w "${install_dir_new}" ]; then
-        print_error "Install directory is not readable or writable: ${install_dir_new}"
-        return 1
-    fi
-    
-    INSTALL_DIR="${install_dir_new}"
-    INSTALL_FULL_DIR="${INSTALL_DIR}/${PROJECT_CODE}"
     INSTALL_MODE="lite"
     mkdir -p "${INSTALL_FULL_DIR}"
     
@@ -1066,6 +875,10 @@ quick_install_lite() {
     start_service
 }
 
+quick_install_lite() {
+    quick_install
+}
+
 install_service(){
     # Create installation directory
     print_log "Start installation..."
@@ -1084,22 +897,12 @@ install_service(){
     print_log "Get docker-compose.yaml completed: ${INSTALL_FULL_DIR}/${DOCKER_COMPOSE_FILE}"
     wget -O "${INSTALL_FULL_DIR}/.env" "${FDS_BASE_URL}/.env.example"
     print_log "Get .env completed: ${INSTALL_FULL_DIR}/.env"
+    sed -i '/_ENGINE_HOST/d;/_ENGINE_PORT/d;/_ENGINE_LOG_LEVEL/d' "${INSTALL_FULL_DIR}/${DOCKER_COMPOSE_FILE}"
+    sed -i '/^.*_ENGINE_HOST=/d;/^.*_ENGINE_PORT=/d;/^.*_ENGINE_LOG_LEVEL=/d' "${INSTALL_FULL_DIR}/.env"
     # Replace .env variables
     sed -i "s/^BACKEND_PORT=.*/BACKEND_PORT=${BACKEND_PORT}/" "${INSTALL_FULL_DIR}/.env"
-    if [ "${INSTALL_MODE}" == "full" ]; then
-        sed -i "s/^AI_ENGINE_PORT=.*/AI_ENGINE_PORT=${AI_ENGINE_PORT}/" "${INSTALL_FULL_DIR}/.env"
-    fi
     if [ "${INSTALL_FROM}" == "xiaomi-fds" ]; then
         sed -i 's/^DOCKER_REPO=ghcr\.io\//#DOCKER_REPO=ghcr.io\//' "${INSTALL_FULL_DIR}/.env"
-    fi
-    
-    if [ "${INSTALL_MODE}" == "full" ]; then
-        download_models_from
-        if [ "${MODELS_DL_FROM}" == "xiaomi-fds" ]; then
-            download_models_fds
-        else
-            download_models
-        fi
     fi
     
     print_success "${PROJECT_NAME} installation completed successfully!"
@@ -1457,25 +1260,7 @@ install_runtime_environment() {
             print_error "Docker installation failed!"
             return 1
         fi
-        if [ "${INSTALL_MODE}" != "lite" ]; then
-            if [[ "$GPU_VENDOR" == "NVIDIA" ]]; then
-                if ! install_nvidia_env; then
-                    print_error "NVIDIA runtime environment installation failed!"
-                    return 1
-                fi
-                if ! install_nvidia_container_env; then
-                    print_error "NVIDIA container toolkit installation failed!"
-                    return 1
-                fi
-                elif [[ "$GPU_VENDOR" == "AMD" ]]; then
-                if ! install_amd_env; then
-                    print_error "AMD runtime environment installation failed!"
-                    return 1
-                fi
-            fi
-        else
-            print_log "Install without GPU support, skipping GPU env installation"
-        fi
+        print_log "Backend-only installation, skipping optional GPU runtime setup"
         elif [[ "$OS" == "macOS" ]]; then
         print_warning "Please install Docker Desktop for Mac manually from https://www.docker.com/products/docker-desktop"
         return 1
@@ -1523,7 +1308,7 @@ show_help() {
     # print_header
     print_log "Available commands:"
     print_log "  quick_install                 - Perform quick installation"
-    print_log "  quick_install_lite            - Perform quick installation (without AI Engine)"
+    print_log "  quick_install_lite            - Compatibility alias for quick_install"
     print_log "  start_service                 - Start the service"
     print_log "  update_service                - Update the service"
     print_log "  stop_service                  - Stop the service"
@@ -1544,45 +1329,43 @@ show_menu() {
         print_header
         print_log "Main Menu:"
         print_log "1.  Quick Install"
-        print_log "2.  Quick Install (Without AI Engine)"
-        print_log "3.  Start Service"
-        print_log "4.  Update Service"
-        print_log "5.  Stop Service"
-        print_log "6.  Install Runtime Environment"
-        print_log "7.  Check Runtime Environment"
-        print_log "8.  Uninstall"
-        print_log "9.  Help"
+        print_log "2.  Start Service"
+        print_log "3.  Update Service"
+        print_log "4.  Stop Service"
+        print_log "5.  Install Runtime Environment"
+        print_log "6.  Check Runtime Environment"
+        print_log "7.  Uninstall"
+        print_log "8.  Help"
         print_log "q.  Exit"
         print_log ""
-        read -p "[✳️ INPUT] Select an option (1-9): " choice
+        read -p "[✳️ INPUT] Select an option (1-8): " choice
         case $choice in
             1) quick_install ;;
-            2) quick_install_lite ;;
-            3) start_service ;;
-            4) update_service ;;
-            5) stop_service ;;
-            6)
+            2) start_service ;;
+            3) update_service ;;
+            4) stop_service ;;
+            5)
                 get_system_info
                 get_runtime_environment
                 print_system_info
                 print_runtime_environment
                 install_runtime_environment
             ;;
-            7)
+            6)
                 get_system_info
                 get_runtime_environment
                 print_system_info
                 print_runtime_environment
                 print_service_status
             ;;
-            8) uninstall ;;
-            9) show_help ;;
+            7) uninstall ;;
+            8) show_help ;;
             q)
                 print_log "Exiting..."
                 exit 0
             ;;
             *)
-                print_error "Invalid option. Please select 1-9."
+                print_error "Invalid option. Please select 1-8."
             ;;
         esac
         
