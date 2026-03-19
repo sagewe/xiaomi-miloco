@@ -42,9 +42,6 @@ ARCH="Unknown"
 KERNEL_VERSION="Unknown"
 MEMORY=0
 WSL_VERSION="Unknown"
-GPU_VENDOR="Unknown"
-GPU_MODEL="Unknown"
-GPU_MEMORY=0
 
 # Runtime environment
 DEPEND_DOCKER="Unknown"
@@ -218,7 +215,6 @@ print_system_info(){
     print_log "- Kernel Version: ${KERNEL_VERSION}"
     print_log "- Memory: ${MEMORY} GB"
     print_log "- WSL Version: ${WSL_VERSION}"
-    print_log "- GPU Vendor: ${GPU_VENDOR}"
     
     if [ ${#un_supported[@]} -gt 0 ]; then
         print_error "Unsupported system configuration:"
@@ -275,36 +271,6 @@ get_system_info() {
         # Kernel version (for Linux)
         KERNEL_VERSION=$(uname -r)
         MEMORY=$(awk '/MemTotal/ {printf "%.2f", $2/1024/1024}' /proc/meminfo)
-        if [ "${WSL_VERSION}" == "Unknown" ]; then
-            # GPU Information
-            if command -v lspci >/dev/null 2>&1; then
-                if lspci | grep -i vga | grep -i nvidia >/dev/null 2>&1; then
-                    GPU_VENDOR="NVIDIA"
-                    GPU_MODEL=$(lspci | grep -i vga | grep -i nvidia | cut -d ':' -f3)
-                    elif lspci | grep -i vga | grep -i amd >/dev/null 2>&1; then
-                    GPU_VENDOR="AMD"
-                    GPU_MODEL=$(lspci | grep -i vga | grep -i amd | cut -d ':' -f3)
-                    elif lspci | grep -i vga | grep -i intel >/dev/null 2>&1; then
-                    GPU_VENDOR="Intel"
-                    GPU_MODEL=$(lspci | grep -i vga | grep -i intel | cut -d ':' -f3)
-                else
-                    GPU_VENDOR="Unknown"
-                    GPU_MODEL="Unknown"
-                fi
-            else
-                GPU_VENDOR="Unknown"
-                GPU_MODEL="Unknown"
-            fi
-            elif [ "${WSL_VERSION}" == "WSL2" ]; then
-            # Use nvidia-smi to check whether the NVIDIA GPU is supported
-            if command -v nvidia-smi >/dev/null 2>&1; then
-                GPU_VENDOR="NVIDIA"
-                GPU_MODEL="Unknown"
-            fi
-        else
-            GPU_VENDOR="Unknown"
-            GPU_MODEL="Unknown"
-        fi
         elif [ "$OS" = "Darwin" ]; then
         local TOTAL_MEM_BYTES=$(sysctl -n hw.memsize)
         KERNEL_VERSION="Unknown"
