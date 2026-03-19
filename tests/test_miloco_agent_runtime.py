@@ -5,6 +5,10 @@ import pytest
 from aiohttp import web
 
 from miloco_server.agent.runtime_bridge import AgentRuntimeBridge
+from miloco_server.agent.runtime_contract import (
+    PlanningModelConfigPayload,
+    RuntimeRequestPayload,
+)
 from miloco_server.agent.rust_runtime_adapter import (
     RUNTIME_BACKEND_AUTO,
     RUNTIME_BACKEND_RUST,
@@ -75,26 +79,28 @@ async def serve_sse(chunks_by_request, *, status=200, response_text="upstream fa
 
 
 def build_request(base_url, tools=None, *, max_steps=4, planning_model_config=None):
-    return json.dumps(
-        {
-            "request_id": "req-1",
-            "session_id": "session-1",
-            "query": "hello",
-            "max_steps": max_steps,
-            "language": "UserLanguage.ENGLISH",
-            "messages": [
-                {"role": "system", "content": "system"},
-                {"role": "user", "content": "hello"},
-            ],
-            "tools": tools or [],
-            "planning_model_config": planning_model_config or {
-                "base_url": base_url,
-                "api_key": "token",
-                "model_name": "demo-model",
-            },
-        },
-        ensure_ascii=False,
-    )
+    config = planning_model_config or {
+        "base_url": base_url,
+        "api_key": "token",
+        "model_name": "demo-model",
+    }
+    return RuntimeRequestPayload(
+        request_id="req-1",
+        session_id="session-1",
+        query="hello",
+        max_steps=max_steps,
+        language="UserLanguage.ENGLISH",
+        messages=[
+            {"role": "system", "content": "system"},
+            {"role": "user", "content": "hello"},
+        ],
+        tools=tools or [],
+        planning_model_config=PlanningModelConfigPayload(
+            base_url=config.get("base_url"),
+            api_key=config.get("api_key"),
+            model_name=config.get("model_name"),
+        ),
+    ).to_json()
 
 
 @pytest.mark.asyncio

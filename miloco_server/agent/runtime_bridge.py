@@ -14,6 +14,15 @@ from openai.types.chat.chat_completion_message_tool_call import (
     ChatCompletionMessageToolCall,
 )
 
+from miloco_server.agent.runtime_contract import (
+    EVENT_ASSISTANT_STEP_FINALIZED,
+    EVENT_DIALOG_EXCEPTION,
+    EVENT_DIALOG_FINISH,
+    EVENT_TOAST_STREAM,
+    EVENT_TOOL_CALL_FINISHED,
+    EVENT_TOOL_CALL_STARTED,
+    RuntimeEvent,
+)
 from miloco_server.mcp.tool_contract import (
     split_tool_name,
     ToolInvocationRequest,
@@ -23,14 +32,6 @@ from miloco_server.schema.chat_schema import Template
 from miloco_server.schema.mcp_schema import CallToolResult
 
 logger = logging.getLogger(__name__)
-
-EVENT_TOAST_STREAM = "toast_stream"
-EVENT_TOOL_CALL_STARTED = "tool_call_started"
-EVENT_TOOL_CALL_FINISHED = "tool_call_finished"
-EVENT_ASSISTANT_STEP_FINALIZED = "assistant_step_finalized"
-EVENT_DIALOG_EXCEPTION = "dialog_exception"
-EVENT_DIALOG_FINISH = "dialog_finish"
-
 
 @dataclass
 class RuntimeExecutionResult:
@@ -48,9 +49,9 @@ class AgentRuntimeBridge:
 
     def emit_event(self, event_json: str) -> None:
         """Handle payload-only events emitted by the Rust runtime."""
-        event = json.loads(event_json)
-        event_type = event["type"]
-        payload = event.get("payload", {})
+        event = RuntimeEvent.from_json(event_json)
+        event_type = event.event_type
+        payload = event.payload
 
         if event_type == EVENT_TOAST_STREAM:
             self._agent._send_instruction(Template.ToastStream(stream=payload["stream"]))

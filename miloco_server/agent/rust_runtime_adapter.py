@@ -6,37 +6,24 @@
 from __future__ import annotations
 
 import importlib
-import json
 import logging
-from typing import Any
 
+from miloco_server.agent.runtime_bridge import AgentRuntimeBridge
+from miloco_server.agent.runtime_contract import (
+    PlanningModelConfigPayload,
+    RuntimeRequestPayload,
+    to_jsonable,
+)
 from miloco_server.config import CHAT_CONFIG
 from miloco_server.middleware.exceptions import ResourceNotFoundException
 from miloco_server.utils.local_models import ModelPurpose
-
-from miloco_server.agent.runtime_bridge import AgentRuntimeBridge
 
 logger = logging.getLogger(__name__)
 
 RUNTIME_BACKEND_PYTHON = "python"
 RUNTIME_BACKEND_RUST = "rust"
 RUNTIME_BACKEND_AUTO = "auto"
-SUPPORTED_RUNTIME_BACKENDS = {
-    RUNTIME_BACKEND_PYTHON,
-    RUNTIME_BACKEND_RUST,
-    RUNTIME_BACKEND_AUTO,
-}
-
-
-def _to_jsonable(value: Any) -> Any:
-    """Convert SDK and Pydantic objects into plain JSON-compatible values."""
-    if hasattr(value, "model_dump"):
-        return _to_jsonable(value.model_dump(mode="json"))
-    if isinstance(value, dict):
-        return {key: _to_jsonable(item) for key, item in value.items()}
-    if isinstance(value, (list, tuple)):
-        return [_to_jsonable(item) for item in value]
-    return value
+SUPPORTED_RUNTIME_BACKENDS = {RUNTIME_BACKEND_PYTHON, RUNTIME_BACKEND_RUST, RUNTIME_BACKEND_AUTO}
 
 
 class RustRuntimeAdapter:
@@ -85,7 +72,7 @@ class RustRuntimeAdapter:
 
         bridge = AgentRuntimeBridge(self._agent)
         runtime = runtime_cls()
-        request_json = json.dumps(self._build_request_payload(query), ensure_ascii=False)
+        request_json = self._build_request_payload(query).to_json()
 
         if request_kind == "dynamic_execute":
             await runtime.run_dynamic_execute(request_json, bridge)
@@ -94,7 +81,7 @@ class RustRuntimeAdapter:
 
         return bridge.result.success, bridge.result.error_message
 
-    def _build_request_payload(self, query: str) -> dict[str, Any]:
+    def _build_request_payload(self, query: str) -> RuntimeRequestPayload:
         """Build the JSON contract consumed by the Rust runtime."""
         llm_proxy = self._agent._manager.get_llm_proxy_by_purpose(ModelPurpose.PLANNING)
         if llm_proxy is None:
@@ -102,20 +89,20 @@ class RustRuntimeAdapter:
                 "Planning model not exit, Please configure on the Model Settings Page"
             )
 
-        return {
-            "request_id": self._agent._request_id,
-            "session_id": getattr(self._agent, "_session_id", self._agent._request_id),
-            "query": query,
-            "max_steps": self._agent._max_steps,
-            "language": str(self._agent._language),
-            "messages": _to_jsonable(self._agent._chat_history_messages.get_messages()),
-            "tools": _to_jsonable(self._agent._all_mcp_tools_meta),
-            "planning_model_config": {
-                "base_url": getattr(llm_proxy, "base_url", None),
-                "api_key": getattr(llm_proxy, "api_key", None),
-                "model_name": getattr(llm_proxy, "model_name", None),
-            },
-        }
+        return RuntimeRequestPayload(
+            request_id=self._agent._request_id,
+            session_id=getattr(self._agent, "_session_id", self._agent._request_id),
+            query=query,
+            max_steps=self._agent._max_steps,
+            language=str(self._agent._language),
+            messages=to_jsonable(self._agent._chat_history_messages.get_messages()),
+            tools=to_jsonable(self._agent._all_mcp_tools_meta),
+            planning_model_config=PlanningModelConfigPayload(
+                base_url=getattr(llm_proxy, "base_url", None),
+                api_key=getattr(llm_proxy, "api_key", None),
+                model_name=getattr(llm_proxy, "model_name", None),
+            ),
+        )
 
     def _load_runtime_class(self):
         """Import the wheel lazily to keep the Python fallback path cheap."""
