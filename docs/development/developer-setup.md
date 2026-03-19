@@ -147,6 +147,8 @@ export MILOCO_AGENT_RUNTIME_BACKEND=python
 
 Docker images default to `MILOCO_AGENT_RUNTIME_BACKEND=auto`, which prefers the native wheel when it is installed and falls back to the Python runtime otherwise.
 
+Release metadata currently uses `0.1.0` across the repository root package, `miloco_server`, and `miloco-agent-runtime`. When preparing a backend or wheel release tag, use the shared repository release version rather than introducing a Rust-only or server-only version.
+
 #### 6. Optional: Run the offline replay benchmark
 
 Use the canned SSE replay benchmark to validate latency after native runtime changes:

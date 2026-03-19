@@ -98,6 +98,9 @@ To pin a released wheel during image build, pass one of these build arguments:
 MILOCO_AGENT_RUNTIME_VERSION=<release-tag>
 MILOCO_AGENT_RUNTIME_WHEEL_URL=<direct-wheel-url>
 ```
+
+Use the repository release tag for `MILOCO_AGENT_RUNTIME_VERSION`. The backend package metadata and the native `miloco-agent-runtime` wheel version are both aligned to the same repository release version.
+
 ## Access the Service
 
 Access the service via `https://<your ip>:8000`. For local access, IP is `127.0.0.1`;
