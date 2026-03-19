@@ -8,13 +8,16 @@ from __future__ import annotations
 import json
 import logging
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Optional
 
 from openai.types.chat.chat_completion_message_tool_call import (
     ChatCompletionMessageToolCall,
 )
 
 from miloco_server.agent.runtime_contract import (
+    AssistantStepFinalizedPayload,
+    DialogExceptionPayload,
+    DialogFinishPayload,
     EVENT_ASSISTANT_STEP_FINALIZED,
     EVENT_DIALOG_EXCEPTION,
     EVENT_DIALOG_FINISH,
@@ -22,12 +25,11 @@ from miloco_server.agent.runtime_contract import (
     EVENT_TOOL_CALL_FINISHED,
     EVENT_TOOL_CALL_STARTED,
     RuntimeEvent,
+    ToastStreamPayload,
+    ToolCallFinishedPayload,
+    ToolCallStartedPayload,
 )
-from miloco_server.mcp.tool_contract import (
-    split_tool_name,
-    ToolInvocationRequest,
-    ToolInvocationResultPayload,
-)
+from miloco_server.mcp.tool_contract import ToolInvocationRequest, ToolInvocationResultPayload
 from miloco_server.schema.chat_schema import Template
 from miloco_server.schema.mcp_schema import CallToolResult
 
@@ -54,52 +56,62 @@ class AgentRuntimeBridge:
         payload = event.payload
 
         if event_type == EVENT_TOAST_STREAM:
-            self._agent._send_instruction(Template.ToastStream(stream=payload["stream"]))
+            toast_payload = ToastStreamPayload.from_payload(payload)
+            self._agent._send_instruction(Template.ToastStream(stream=toast_payload.stream))
             return
 
         if event_type == EVENT_ASSISTANT_STEP_FINALIZED:
+            step_payload = AssistantStepFinalizedPayload.from_payload(payload)
             tool_calls = [
                 ChatCompletionMessageToolCall(
-                    id=tool_call["id"],
+                    id=tool_call.id,
                     type="function",
                     function={
-                        "name": tool_call["function_name"],
-                        "arguments": tool_call["arguments"],
+                        "name": tool_call.function_name,
+                        "arguments": tool_call.arguments,
                     },
                 )
-                for tool_call in payload.get("tool_calls", [])
+                for tool_call in step_payload.tool_calls
             ]
             self._agent._chat_history_messages.add_assistant_message(
-                payload.get("content", ""),
+                step_payload.content,
                 tool_calls,
             )
             return
 
         if event_type == EVENT_TOOL_CALL_STARTED:
-            client_id, tool_name = split_tool_name(payload["function_name"])
+            tool_started_payload = ToolCallStartedPayload.from_payload(payload)
+            parsed_tool_call = tool_started_payload.parsed_tool_call
+            client_id = parsed_tool_call.client_id
+            tool_name = parsed_tool_call.tool_name
             service_name = self._agent._tool_executor.get_server_name(client_id)
             self._agent._send_instruction(
                 Template.CallTool(
-                    id=payload["tool_call_id"],
+                    id=tool_started_payload.tool_call_id,
                     service_name=service_name,
                     tool_name=tool_name,
-                    tool_params=payload.get("arguments"),
+                    tool_params=tool_started_payload.arguments,
                 )
             )
             return
 
         if event_type == EVENT_TOOL_CALL_FINISHED:
-            self._handle_tool_finished(payload)
+            self._handle_tool_finished(ToolCallFinishedPayload.from_payload(payload))
             return
 
         if event_type == EVENT_DIALOG_EXCEPTION:
-            self.result.error_message = payload.get("message")
+            self.result.error_message = DialogExceptionPayload.from_payload(payload).message
             return
 
         if event_type == EVENT_DIALOG_FINISH:
-            self.result.success = bool(payload.get("success", False))
-            if not self.result.success and payload.get("error_message") and not self.result.error_message:
-                self.result.error_message = payload["error_message"]
+            dialog_finish_payload = DialogFinishPayload.from_payload(payload)
+            self.result.success = dialog_finish_payload.success
+            if (
+                not self.result.success
+                and dialog_finish_payload.error_message
+                and not self.result.error_message
+            ):
+                self.result.error_message = dialog_finish_payload.error_message
             return
 
         logger.warning(
@@ -177,19 +189,21 @@ class AgentRuntimeBridge:
             error_message=result.error_message,
         ).to_json()
 
-    def _handle_tool_finished(self, payload: dict[str, Any]) -> None:
+    def _handle_tool_finished(self, payload: ToolCallFinishedPayload) -> None:
         """Support future Rust-side tool execution events without changing the bridge API."""
-        client_id, tool_name = split_tool_name(payload["function_name"])
+        parsed_tool_call = payload.parsed_tool_call
+        client_id = parsed_tool_call.client_id
+        tool_name = parsed_tool_call.tool_name
         service_name = self._agent._tool_executor.get_server_name(client_id)
         result = CallToolResult(
-            success=payload.get("success", False),
-            error_message=payload.get("error_message"),
-            response=payload.get("response"),
+            success=payload.success,
+            error_message=payload.error_message,
+            response=payload.response,
         )
         response_json = json.dumps(result.response, ensure_ascii=False) if result.response is not None else None
         self._agent._send_instruction(
             Template.CallToolResult(
-                id=payload["tool_call_id"],
+                id=payload.tool_call_id,
                 success=result.success,
                 tool_response=response_json,
                 error_message=result.error_message,
@@ -197,7 +211,7 @@ class AgentRuntimeBridge:
         )
         tool_call_content = response_json if result.success else result.error_message
         self._agent._chat_history_messages.add_tool_call_res_content(
-            payload["tool_call_id"],
+            payload.tool_call_id,
             tool_name,
             tool_call_content or "",
         )
@@ -205,6 +219,6 @@ class AgentRuntimeBridge:
             client_id,
             service_name,
             tool_name,
-            payload.get("parameters") or {},
+            payload.parameters,
             result,
         )

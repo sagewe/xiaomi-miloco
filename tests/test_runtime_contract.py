@@ -1,6 +1,10 @@
 import json
 
 from miloco_server.agent.runtime_contract import (
+    AssistantStepFinalizedPayload,
+    AssistantToolCallPayload,
+    DialogExceptionPayload,
+    DialogFinishPayload,
     EVENT_ASSISTANT_STEP_FINALIZED,
     EVENT_DIALOG_EXCEPTION,
     EVENT_DIALOG_FINISH,
@@ -10,6 +14,9 @@ from miloco_server.agent.runtime_contract import (
     PlanningModelConfigPayload,
     RuntimeEvent,
     RuntimeRequestPayload,
+    ToastStreamPayload,
+    ToolCallFinishedPayload,
+    ToolCallStartedPayload,
 )
 
 
@@ -75,3 +82,61 @@ def test_runtime_event_constants_remain_stable():
         "dialog_exception",
         "dialog_finish",
     }
+
+
+def test_runtime_event_payload_helpers_parse_expected_shapes():
+    assert ToastStreamPayload.from_payload({"stream": "hello"}).stream == "hello"
+    assert AssistantStepFinalizedPayload.from_payload(
+        {
+            "content": "done",
+            "tool_calls": [
+                {
+                    "id": "call_0",
+                    "function_name": "client___tool",
+                    "arguments": "{\"city\":\"Paris\"}",
+                }
+            ],
+        }
+    ) == AssistantStepFinalizedPayload(
+        content="done",
+        tool_calls=[
+            AssistantToolCallPayload(
+                id="call_0",
+                function_name="client___tool",
+                arguments="{\"city\":\"Paris\"}",
+            )
+        ],
+    )
+
+
+def test_runtime_tool_event_payloads_parse_expected_shapes():
+    tool_started = ToolCallStartedPayload.from_payload(
+        {
+            "tool_call_id": "call_0",
+            "function_name": "client___tool",
+            "arguments": "{\"city\":\"Paris\"}",
+        }
+    )
+    assert tool_started.parsed_tool_call.client_id == "client"
+    assert tool_started.parsed_tool_call.tool_name == "tool"
+    assert tool_started.parsed_tool_call.parameters == {"city": "Paris"}
+
+    tool_finished = ToolCallFinishedPayload.from_payload(
+        {
+            "tool_call_id": "call_0",
+            "function_name": "client___tool",
+            "success": True,
+            "response": {"ok": True},
+            "parameters": {"city": "Paris"},
+        }
+    )
+    assert tool_finished.parsed_tool_call.client_id == "client"
+    assert tool_finished.parameters == {"city": "Paris"}
+    assert tool_finished.response == {"ok": True}
+
+
+def test_runtime_dialog_payloads_parse_expected_shapes():
+    assert DialogExceptionPayload.from_payload({"message": "boom"}).message == "boom"
+    assert DialogFinishPayload.from_payload(
+        {"success": False, "error_message": "boom"}
+    ) == DialogFinishPayload(success=False, error_message="boom")
