@@ -664,10 +664,6 @@ quick_install() {
     start_service
 }
 
-quick_install_lite() {
-    quick_install
-}
-
 install_service(){
     # Create installation directory
     print_log "Start installation..."
@@ -853,7 +849,6 @@ show_help() {
     # print_header
     print_log "Available commands:"
     print_log "  quick_install                 - Perform quick installation"
-    print_log "  quick_install_lite            - Compatibility alias for quick_install"
     print_log "  start_service                 - Start the service"
     print_log "  update_service                - Update the service"
     print_log "  stop_service                  - Stop the service"
@@ -927,7 +922,6 @@ main() {
         # Update docker cmd
         case "$1" in
             quick_install) quick_install ;;
-            quick_install_lite) quick_install_lite ;;
             start_service) start_service ;;
             update_service) update_service ;;
             stop_service) stop_service ;;
