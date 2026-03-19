@@ -15,8 +15,9 @@ from openai.types.chat.chat_completion_message_tool_call import (
 )
 
 from miloco_server.mcp.tool_contract import (
-    parse_tool_arguments,
     split_tool_name,
+    ToolInvocationRequest,
+    ToolInvocationResultPayload,
 )
 from miloco_server.schema.chat_schema import Template
 from miloco_server.schema.mcp_schema import CallToolResult
@@ -108,20 +109,21 @@ class AgentRuntimeBridge:
 
     async def invoke_tool(self, tool_call_json: str) -> str:
         """Execute a tool call via the existing Python ToolExecutor."""
-        payload = json.loads(tool_call_json)
-        function_name = payload["function_name"]
-        tool_call_id = payload["tool_call_id"]
-        arguments = payload.get("arguments")
-        client_id, tool_name = split_tool_name(function_name)
+        request = ToolInvocationRequest.from_json(tool_call_json)
+        parsed_tool_call = request.parsed_tool_call
+        function_name = request.function_name
+        tool_call_id = request.tool_call_id
+        client_id = parsed_tool_call.client_id
+        tool_name = parsed_tool_call.tool_name
         service_name = self._agent._tool_executor.get_server_name(client_id)
-        parameters = parse_tool_arguments(arguments)
+        parameters = parsed_tool_call.parameters
 
         self._agent._send_instruction(
             Template.CallTool(
                 id=tool_call_id,
                 service_name=service_name,
                 tool_name=tool_name,
-                tool_params=arguments,
+                tool_params=request.arguments,
             )
         )
 
@@ -164,18 +166,15 @@ class AgentRuntimeBridge:
             result,
         )
 
-        return json.dumps(
-            {
-                "tool_call_id": tool_call_id,
-                "client_id": client_id,
-                "tool_name": tool_name,
-                "service_name": service_name,
-                "success": result.success,
-                "tool_response": response_json,
-                "error_message": result.error_message,
-            },
-            ensure_ascii=False,
-        )
+        return ToolInvocationResultPayload(
+            tool_call_id=tool_call_id,
+            client_id=client_id,
+            tool_name=tool_name,
+            service_name=service_name,
+            success=result.success,
+            tool_response=response_json,
+            error_message=result.error_message,
+        ).to_json()
 
     def _handle_tool_finished(self, payload: dict[str, Any]) -> None:
         """Support future Rust-side tool execution events without changing the bridge API."""

@@ -10,6 +10,8 @@ from miloco_server.mcp.tool_contract import (
     ParsedToolCall,
     parse_tool_arguments,
     parse_tool_invocation,
+    ToolInvocationRequest,
+    ToolInvocationResultPayload,
 )
 from miloco_server.mcp.tool_executor import ToolExecutor
 from miloco_server.schema.mcp_schema import CallToolResult
@@ -42,6 +44,47 @@ def test_parse_tool_invocation_defaults_missing_client_prefix_to_unknown():
         tool_name="tool",
         parameters={"city": "Paris"},
     )
+
+
+def test_tool_invocation_request_parses_payload_json():
+    request = ToolInvocationRequest.from_json(
+        json.dumps(
+            {
+                "tool_call_id": "call_0",
+                "function_name": "client___tool",
+                "arguments": json.dumps({"city": "Paris"}),
+            }
+        )
+    )
+
+    assert request.tool_call_id == "call_0"
+    assert request.parsed_tool_call == ParsedToolCall(
+        client_id="client",
+        tool_name="tool",
+        parameters={"city": "Paris"},
+    )
+
+
+def test_tool_invocation_result_payload_serializes_expected_shape():
+    payload = ToolInvocationResultPayload(
+        tool_call_id="call_0",
+        client_id="client",
+        tool_name="tool",
+        service_name="Mock Service",
+        success=True,
+        tool_response=json.dumps({"ok": True}),
+        error_message=None,
+    )
+
+    assert json.loads(payload.to_json()) == {
+        "tool_call_id": "call_0",
+        "client_id": "client",
+        "tool_name": "tool",
+        "service_name": "Mock Service",
+        "success": True,
+        "tool_response": json.dumps({"ok": True}),
+        "error_message": None,
+    }
 
 
 @pytest.mark.asyncio

@@ -25,6 +25,55 @@ class ParsedToolCall:
     parameters: dict[str, Any]
 
 
+@dataclass(frozen=True)
+class ToolInvocationRequest:
+    """Rust bridge request payload for invoking a tool through Python."""
+
+    tool_call_id: str
+    function_name: str
+    arguments: Optional[str]
+
+    @property
+    def parsed_tool_call(self) -> ParsedToolCall:
+        return parse_tool_invocation(self.function_name, self.arguments)
+
+    @classmethod
+    def from_json(cls, payload_json: str) -> "ToolInvocationRequest":
+        payload = json.loads(payload_json)
+        return cls(
+            tool_call_id=payload["tool_call_id"],
+            function_name=payload["function_name"],
+            arguments=payload.get("arguments"),
+        )
+
+
+@dataclass(frozen=True)
+class ToolInvocationResultPayload:
+    """Rust bridge response payload returned to the native runtime."""
+
+    tool_call_id: str
+    client_id: str
+    tool_name: str
+    service_name: str
+    success: bool
+    tool_response: Optional[str]
+    error_message: Optional[str]
+
+    def to_json(self) -> str:
+        return json.dumps(
+            {
+                "tool_call_id": self.tool_call_id,
+                "client_id": self.client_id,
+                "tool_name": self.tool_name,
+                "service_name": self.service_name,
+                "success": self.success,
+                "tool_response": self.tool_response,
+                "error_message": self.error_message,
+            },
+            ensure_ascii=False,
+        )
+
+
 def split_tool_name(function_name: str) -> tuple[str, str]:
     """Split MCP function names of the form client___tool."""
     if TOOL_NAME_CONNECT_CHARS in function_name:
