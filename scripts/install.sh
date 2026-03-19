@@ -26,8 +26,6 @@ PROJECT_CONFIG_FILE="${PROJECT_HOME_DIR}/${PROJECT_CODE}.conf"
 SUPPORT_OS=("Linux")            # Linux, macOS
 SUPPORT_OS_DISTRO=("ubuntu" "debian" "amzn" "fedora" "kylin" "rhel" "azl" "opensuse" "sles")
 SUPPORT_ARCH=("x86_64")         # x86_64, arm64
-SUPPORT_GPU_VENDOR=("NVIDIA")   # NVIDIA, AMD
-MIN_GPU_MEMORY_GB=7.8
 
 # Configuration
 INSTALL_DIR="${HOME}"
@@ -35,31 +33,6 @@ INSTALL_FULL_DIR="${INSTALL_DIR}/${PROJECT_CODE}"
 DOCKER_COMPOSE_FILE="docker-compose.yaml"
 INSTALL_MODE="UnKnown"  # legacy value, normalized to lite for backend-only installs
 INSTALL_FROM="Unknown"  # github, xiaomi-fds
-MODELS_DL_FROM="Unknown" # modelscope, huggingface, xiaomi-fds
-
-# NVIDIA Configuration
-# https://docs.nvidia.com/deploy/cuda-compatibility/minor-version-compatibility.html
-# https://docs.nvidia.com/deeplearning/cudnn/backend/latest/reference/support-matrix.html
-NVIDIA_MIN_DRIVER_VERSION="527.41"
-NVIDIA_MIN_CUDA_VERSION="12.5.1"
-NVIDIA_CUDA_TOOLKIT_VERSION="13-0"
-# Get from https://developer.nvidia.com/cuda-downloads
-SUPPORT_OS_DISTRO_NVIDIA=(
-    "ubuntu24.04" "ubuntu22.04" "debian12"
-    "amzn2023" "fedora42" "kylin10" "rhel8" "rhel9" "rhel10" "azl3"
-    "opensuse15" "sles15"
-)
-
-# AMD Configure
-SUPPORT_OS_DISTRO_AMD=()
-
-# Models Download Config
-MS_MIMO_VL_MILOCO_7B_Q4_0_URL="https://modelscope.cn/models/xiaomi-open-source/Xiaomi-MiMo-VL-Miloco-7B-GGUF/resolve/master/MiMo-VL-Miloco-7B_Q4_0.gguf"
-MS_MIMO_VL_MILOCO_7B_Q4_0_MMPROJ_URL="https://modelscope.cn/models/xiaomi-open-source/Xiaomi-MiMo-VL-Miloco-7B-GGUF/resolve/master/mmproj-MiMo-VL-Miloco-7B_BF16.gguf"
-MS_QWEN3_8B_Q4_K_M_URL="https://modelscope.cn/models/Qwen/Qwen3-8B-GGUF/resolve/master/Qwen3-8B-Q4_K_M.gguf"
-HF_MIMO_VL_MILOCO_7B_Q4_0_URL="https://huggingface.co/xiaomi-open-source/Xiaomi-MiMo-VL-Miloco-7B-GGUF/resolve/main/MiMo-VL-Miloco-7B_Q4_0.gguf"
-HF_MIMO_VL_MILOCO_7B_Q4_0_MMPROJ_URL="https://huggingface.co/xiaomi-open-source/Xiaomi-MiMo-VL-Miloco-7B-GGUF/resolve/main/mmproj-MiMo-VL-Miloco-7B_BF16.gguf"
-HF_QWEN3_8B_Q4_K_M_URL="https://huggingface.co/Qwen/Qwen3-8B-GGUF/resolve/main/Qwen3-8B-Q4_K_M.gguf"
 
 # System variables
 OS="Unknown"
@@ -77,14 +50,6 @@ GPU_MEMORY=0
 # Runtime environment
 DEPEND_DOCKER="Unknown"
 DEPEND_DOCKER_COMPOSE="Unknown"
-DEPEND_GPU_MEMORY="Unknown"
-# NVIDIA
-DEPEND_NVIDIA_DRIVER="Unknown"          # TODO: >525.xx?
-DEPEND_NVIDIA_CUDA_TOOLKIT="Unknown"    # TODO: >12.5.1?
-DEPEND_NVCC_CUDA_TOOLKIT="Unknown"      # TODO: >12.5.1?
-DEPEND_NVIDIA_CONTAINER_TOOLKIT="Unknown"
-# AMD
-DEPEND_AMD_DRIVER="Unknown"
 
 # Colors for output
 RED='\033[0;31m'
@@ -405,62 +370,6 @@ get_runtime_environment(){
     else
         DEPEND_DOCKER_COMPOSE="$(${DOCKER_CMD} compose version | awk '{print $4}')"
     fi
-    # Check NVIDIA drivers (if GPU available)
-    if [[ "$GPU_VENDOR" == "NVIDIA" ]]; then
-        if ! command -v nvidia-smi >/dev/null 2>&1; then
-            DEPEND_NVIDIA_DRIVER="Unknown"
-            DEPEND_NVIDIA_CUDA_TOOLKIT="Unknown"
-            DEPEND_GPU_MEMORY="Unknown"
-        else
-            if ! DEPEND_NVIDIA_DRIVER=$(nvidia-smi --query-gpu=driver_version --format=csv,noheader 2>/dev/null); then
-                print_log "Unable to obtain NVIDIA driver version with nvidia-smi"
-                DEPEND_NVIDIA_DRIVER="Unknown"
-            fi
-            if ! DEPEND_NVIDIA_CUDA_TOOLKIT=$(nvidia-smi | awk -F'CUDA Version: ' '{print $2}' | awk '{print $1}' | tr -d '[:space:]'); then
-                print_log "Unable to obtain CUDA Toolkit driver version with nvidia-smi"
-                DEPEND_NVIDIA_CUDA_TOOLKIT="Unknown"
-            fi
-            # Get first GPU memory
-            # TODO: Get all GPUs
-            if mem_mb=$(nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits | head -n1 2>/dev/null); then
-                GPU_MEMORY=$(echo "$mem_mb" | awk '{printf "%.2f", $1/1024}')
-                if (( $(echo "$GPU_MEMORY >= ${MIN_GPU_MEMORY_GB}" | bc -l) )); then
-                    DEPEND_GPU_MEMORY="${GPU_MEMORY} GB"
-                else
-                    DEPEND_GPU_MEMORY="Unknown"
-                fi
-            else
-                print_log "Unable to obtain NVIDIA Memory with nvidia-smi"
-                DEPEND_GPU_MEMORY="Unknown"
-            fi
-            # Update GPU_MODEL with nvidia-smi
-            if gpu_model_new=$(nvidia-smi --query-gpu=name --format=csv,noheader,nounits | head -n1 2>/dev/null); then
-                GPU_MODEL="${gpu_model_new}"
-            fi
-            # The nvidia-smi command can be executed, but the driver version and video memory cannot be obtained. The user is prompted to restart the computer and try again.
-            if [ "${DEPEND_NVIDIA_DRIVER}" == "Unknown" ] && [ "${DEPEND_GPU_MEMORY}" == "Unknown" ]; then
-                print_warning "It is detected that nvidia-smi cannot communicate with the GPU driver. ${YELLOW}Please try restarting the computer to continue${NC}.\n"
-                read -rp "[✳️ OPTION]  Do you want to continue? (yes/No): "
-                if [ "${REPLY}" != "yes" ]; then
-                    print_tip "Installation cancelled"
-                    return 0
-                fi
-            fi
-        fi
-        
-        # If the cuda version is not obtained, try using the nvcc command
-        if ! command -v nvcc >/dev/null 2>&1; then
-            DEPEND_NVCC_CUDA_TOOLKIT="Unknown"
-        else
-            DEPEND_NVCC_CUDA_TOOLKIT=$(nvcc --version | grep release | awk '{print $6}' | tr -d ',')
-        fi
-        
-        if ! command -v nvidia-ctk >/dev/null 2>&1; then
-            DEPEND_NVIDIA_CONTAINER_TOOLKIT="Unknown"
-        else
-            DEPEND_NVIDIA_CONTAINER_TOOLKIT="$(nvidia-ctk --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')"
-        fi
-    fi
 }
 
 print_service_status(){
@@ -474,7 +383,6 @@ print_service_status(){
             print_log_e "- ${YELLOW}Service Stopped${NC}"
         fi
         print_log_e "-- Install Directory: ${GREEN}${INSTALL_FULL_DIR}${NC}"
-        print_log_e "-- Install Mode     : ${GREEN}${INSTALL_MODE}${NC}"
     fi
     if [ "${DEPEND_DOCKER}" != "Unknown" ]; then
         # Get docker images and container
@@ -540,36 +448,6 @@ install_service_from() {
             2)
                 print_log_e "Selected: ${GREEN}2. Xiaomi FDS${NC}"
                 INSTALL_FROM="xiaomi-fds"
-                return
-            ;;
-            *)
-                print_error "Invalid option, please select again"
-            ;;
-        esac
-    done
-}
-
-download_models_from() {
-    print_info "Download Models from: "
-    print_info "1. Model Scope"
-    print_info "2. Hugging Face"
-    print_info "3. Xiaomi FDS"
-    while true; do
-        read -rp "[✳️ INPUT] Please select the installation source (1/2/3): " in_source
-        case $in_source in
-            1)
-                print_log_e "Selected: ${GREEN}1. Model Scope${NC}"
-                MODELS_DL_FROM="modelscope"
-                return
-            ;;
-            2)
-                print_log_e "Selected: ${GREEN}2. Hugging Face${NC}"
-                MODELS_DL_FROM="huggingface"
-                return
-            ;;
-            3)
-                print_log_e "Selected: ${GREEN}3. Xiaomi FDS${NC}"
-                MODELS_DL_FROM="xiaomi-fds"
                 return
             ;;
             *)
@@ -646,85 +524,6 @@ is_service_running() {
         return 0
     fi
     return 1
-}
-
-download_models() {
-    # TODO: Use download script, and check md5
-    if [ "${INSTALL_MODE}" != "full" ]; then
-        print_log "Skipping model download"
-        return 0
-    fi
-    if [ ! -d "${INSTALL_FULL_DIR}/models" ]; then
-        mkdir -p "${INSTALL_FULL_DIR}/models"
-    fi
-    mkdir -p "${INSTALL_FULL_DIR}/models/MiMo-VL-Miloco-7B"
-    mkdir -p "${INSTALL_FULL_DIR}/models/Qwen3-8B"
-    
-    print_log "Downloading models..."
-    if [ "${MODELS_DL_FROM}" == "modelscope" ]; then
-        wget -c -O "${INSTALL_FULL_DIR}/models/MiMo-VL-Miloco-7B/MiMo-VL-Miloco-7B_Q4_0.gguf" "${MS_MIMO_VL_MILOCO_7B_Q4_0_URL}"
-    else
-        wget -c -O "${INSTALL_FULL_DIR}/models/MiMo-VL-Miloco-7B/MiMo-VL-Miloco-7B_Q4_0.gguf" "${HF_MIMO_VL_MILOCO_7B_Q4_0_URL}"
-    fi
-    print_dl "${INSTALL_FULL_DIR}/models/MiMo-VL-Miloco-7B/MiMo-VL-Miloco-7B_Q4_0.gguf"
-    
-    if [ "${MODELS_DL_FROM}" == "modelscope" ]; then
-        wget -c -O "${INSTALL_FULL_DIR}/models/MiMo-VL-Miloco-7B/mmproj-MiMo-VL-Miloco-7B_BF16.gguf" "${MS_MIMO_VL_MILOCO_7B_Q4_0_MMPROJ_URL}"
-    else
-        wget -c -O "${INSTALL_FULL_DIR}/models/MiMo-VL-Miloco-7B/mmproj-MiMo-VL-Miloco-7B_BF16.gguf" "${HF_MIMO_VL_MILOCO_7B_Q4_0_MMPROJ_URL}"
-    fi
-    print_dl "${INSTALL_FULL_DIR}/models/MiMo-VL-Miloco-7B/mmproj-MiMo-VL-Miloco-7B_BF16.gguf"
-    
-    if [ "${MODELS_DL_FROM}" == "modelscope" ]; then
-        wget -c -O "${INSTALL_FULL_DIR}/models/Qwen3-8B/Qwen3-8B-Q4_K_M.gguf" "${MS_QWEN3_8B_Q4_K_M_URL}"
-    else
-        wget -c -O "${INSTALL_FULL_DIR}/models/Qwen3-8B/Qwen3-8B-Q4_K_M.gguf" "${HF_QWEN3_8B_Q4_K_M_URL}"
-    fi
-    print_dl "${INSTALL_FULL_DIR}/models/Qwen3-8B/Qwen3-8B-Q4_K_M.gguf"
-}
-
-download_models_fds() {
-    # TODO: Use download script
-    if [ "${INSTALL_MODE}" != "full" ]; then
-        print_log "Skipping model download"
-        return 0
-    fi
-    local need_dl="no"
-    if [ ! -d "${INSTALL_FULL_DIR}/models" ]; then
-        need_dl="yes"
-    fi
-    if [ ! -f "${INSTALL_FULL_DIR}/models/MiMo-VL-Miloco-7B/MiMo-VL-Miloco-7B_Q4_0.gguf" ]; then
-        need_dl="yes"
-    fi
-    if [ ! -f "${INSTALL_FULL_DIR}/models/MiMo-VL-Miloco-7B/mmproj-MiMo-VL-Miloco-7B_BF16.gguf" ]; then
-        need_dl="yes"
-    fi
-    if [ ! -f "${INSTALL_FULL_DIR}/models/Qwen3-8B/Qwen3-8B-Q4_K_M.gguf" ]; then
-        need_dl="yes"
-    fi
-    
-    if [ "${need_dl}" == "yes" ] ; then
-        print_log "Downloading models..."
-        wget -c -O "${INSTALL_FULL_DIR}/models.zip" "${CDN_BASE_URL}/models.zip"
-        wget -O "${INSTALL_FULL_DIR}/models.md5" "${FDS_BASE_URL}/models.md5"
-        # Checking md5
-        print_log "Checking md5..."
-        local md5_calc=$(md5sum "${INSTALL_FULL_DIR}/models.zip" | awk '{print $1}')
-        local md5_cloud=$(tr -d ' \n\r\t' < "${INSTALL_FULL_DIR}/models.md5")
-        if [ "$md5_calc" != "$md5_cloud" ]; then
-            print_error "models MD5 mismatch: ${md5_calc} != ${md5_cloud}"
-            exit 1
-        else
-            print_success "models MD5 match: ${md5_calc} == ${md5_cloud}"
-        fi
-        print_success "Download models successfully: ${INSTALL_FULL_DIR}/models.zip"
-        print_log "Unzip models..."
-        rm -rf "${INSTALL_FULL_DIR}/models"
-        unzip "${INSTALL_FULL_DIR}/models.zip" -d "${INSTALL_FULL_DIR}/models"
-        print_success "Unzip models successfully: ${INSTALL_FULL_DIR}/models"
-    else
-        print_log "Skip download, models directory exists: ${INSTALL_FULL_DIR}/models"
-    fi
 }
 
 download_docker_images() {
@@ -980,10 +779,6 @@ stop_service() {
     print_success "Service stopped successfully: ${INSTALL_FULL_DIR}/${DOCKER_COMPOSE_FILE}"
 }
 
-check_service(){
-    echo "check"
-}
-
 install_docker(){
     if [ "${DEPEND_DOCKER}" != "Unknown" ] && [ "${DEPEND_DOCKER_COMPOSE}" != "Unknown" ]; then
         print_success "Docker already installed"
@@ -1001,246 +796,6 @@ install_docker(){
         DOCKER_CMD="sudo docker"
         print_tip "Added user to docker group. You may need to log out and back in for changes to take effect."
     fi
-    return 0
-}
-
-install_nvidia_env(){
-    if [[ "${GPU_VENDOR}" != "NVIDIA" ]]; then
-        print_error "NVIDIA runtime environment not supported, current gpu vendor: $GPU_VENDOR"
-        return 1
-    fi
-    if [ "${DEPEND_NVIDIA_DRIVER}" != "Unknown" ] && [ "${DEPEND_NVIDIA_CUDA_TOOLKIT}" != "Unknown" ]; then
-        print_success "NVIDIA runtime environment already installed"
-        return 0
-    fi
-    print_log "Installing NVIDIA Driver and CUDA Toolkit..."
-    
-    case "${OS_DISTRO}" in
-        ubuntu|debian)
-            # ubuntu debian
-            if ! install_nvidia_env_with_apt; then
-                print_error "Install ${GPU_VENDOR} for ${OS_DISTRO} failed"
-                return 1
-            fi
-        ;;
-        amzn|fedora|kylin|rhel)
-            # amazon-linux fedora kylinos oracle-linux rhel Rocky
-            if ! install_nvidia_env_with_dnf; then
-                print_error "Install ${GPU_VENDOR} for ${OS_DISTRO} failed"
-                return 1
-            fi
-        ;;
-        azl)
-            # azure-linux
-            if ! install_nvidia_env_with_tdnf; then
-                print_error "Install ${GPU_VENDOR} for ${OS_DISTRO} failed"
-                return 1
-            fi
-        ;;
-        opensuse|sles)
-            # opensuse sles
-            if ! install_nvidia_env_with_zypper; then
-                print_error "Install ${GPU_VENDOR} for ${OS_DISTRO} failed"
-                return 1
-            fi
-        ;;
-        *)
-            print_error "Install ${GPU_VENDOR} failed, un-support os distro: ${OS_DISTRO}"
-            return 1
-        ;;
-    esac
-    return 0
-}
-
-install_nvidia_env_with_apt(){
-    local cuda_keyring_version="1.1-1"
-    local cuda_file_name="cuda-keyring_${cuda_keyring_version}_all.deb"
-    local cuda_file_full_name="${INSTALL_FULL_DIR}/${cuda_file_name}"
-    # TODO： perf logic, use cache dir
-    if [ ! -d "${INSTALL_FULL_DIR}" ]; then
-        cuda_file_full_name="/tmp/${cuda_file_name}"
-    fi
-    case "${WSL_VERSION}" in
-        Unknown)
-            local ver_major=$(echo "$OS_VERSION_ID" | cut -d. -f1)
-            local ver_minor=$(echo "$OS_VERSION_ID" | cut -d. -f2)
-            if [ "${OS_DISTRO}" == "debian" ]; then
-                ver_minor=""
-            fi
-            local repo_url="https://developer.download.nvidia.com/compute/cuda/repos/${OS_DISTRO}${ver_major}${ver_minor}/${ARCH}/${cuda_file_name}"
-            wget -c -O "${cuda_file_full_name}" "${repo_url}"
-        ;;
-        WSL2)
-            wget -c -O "${cuda_file_full_name}" "https://developer.download.nvidia.com/compute/cuda/repos/wsl-ubuntu/${ARCH}/${cuda_file_name}"
-        ;;
-        WSL1)
-            print_error "${GPU_VENDOR} un-support WSL1 for ${OS_DISTRO}${ver_major}${ver_minor}"
-            return 1
-        ;;
-    esac
-    
-    print_log "Downloaded: ${cuda_file_full_name}"
-    sudo dpkg -i "${cuda_file_full_name}"
-    # rm -rf "${cuda_file_full_name}"
-    sudo apt-get update
-    # TODO:
-    # sudo apt-get -y install "cuda-toolkit-${NVIDIA_CUDA_TOOLKIT_VERSION}"
-    if [ "${WSL_VERSION}" == "Unknown" ]; then
-        sudo apt-get -y install cuda-drivers
-    else
-        print_log "Run in ${WSL_VERSION}, skip install NVIDIA Driver"
-    fi
-    # Update env
-    # local rc_files=("${HOME}/.bashrc" "${HOME}/.zshrc")
-    # for rc in "${rc_files[@]}"; do
-    #     print_log "Check env file: ${rc}"
-    #     if [ -f "${rc}" ]; then
-    #         # Check PATH include /usr/local/cuda/bin
-    #         if ! grep -q "/usr/local/cuda/bin" "${rc}"; then
-    #             print_log "Update ${rc}, PATH append: /usr/local/cuda/bin"
-    #             echo 'export PATH=/usr/local/cuda/bin:${PATH:-}' >> "${rc}"
-    #         else
-    #             print_log "PATH include /usr/local/cuda/bin, skip"
-    #         fi
-    #         # Check LD_LIBRARY_PATH include /usr/local/cuda/lib64
-    #         if ! grep -q "/usr/local/cuda/lib64" "${rc}"; then
-    #             print_log "Update ${rc} LD_LIBRARY_PATH append: /usr/local/cuda/lib64"
-    #             echo 'export LD_LIBRARY_PATH=/usr/local/cuda/lib64:${LD_LIBRARY_PATH:-}' >> "${rc}"
-    #         else
-    #             print_log "LD_LIBRARY_PATH include /usr/local/cuda/lib64, skip"
-    #         fi
-    #         source "${rc}"
-    #     fi
-    # done
-    # export PATH="/usr/local/cuda/bin:${PATH:-}"
-    # export LD_LIBRARY_PATH="/usr/local/cuda/lib64:${LD_LIBRARY_PATH:-}"
-    return 0
-}
-
-install_nvidia_env_with_dnf() {
-    # Un-support WSL
-    if [ "${WSL_VERSION}" != "Unknown" ]; then
-        print_error "${GPU_VENDOR} un-support ${WSL_VERSION} for ${OS_DISTRO}${OS_VERSION_ID}"
-        return 1
-    fi
-    local repo_url="https://developer.download.nvidia.com/compute/cuda/repos/${OS_DISTRO}${OS_VERSION_ID}/${ARCH}/cuda-${OS_DISTRO}${OS_VERSION_ID}.repo"
-    sudo dnf config-manager --add-repo "${repo_url}"
-    sudo dnf clean all
-    # TODO:
-    # sudo dnf -y install "cuda-toolkit-${NVIDIA_CUDA_TOOLKIT_VERSION}"
-    if [ "${OS_DISTRO}" == "fedora" ]; then
-        sudo dnf -y install cuda-drivers
-    else
-        sudo dnf -y module install nvidia-driver:latest-dkms
-    fi
-    return 0
-}
-
-install_nvidia_env_with_tdnf() {
-    # Un-support WSL
-    if [ "${WSL_VERSION}" != "Unknown" ]; then
-        print_error "${GPU_VENDOR} un-support ${WSL_VERSION} for ${OS_DISTRO}${OS_VERSION_ID}"
-        return 1
-    fi
-    local repo_url="https://developer.download.nvidia.com/compute/cuda/repos/${OS_DISTRO}${OS_VERSION_ID}/${ARCH}/cuda-${OS_DISTRO}${OS_VERSION_ID}.repo"
-    curl "${repo_url}" | sudo tee "/etc/yum.repos.d/cuda-${OS_DISTRO}${OS_VERSION_ID}.repo"
-    sudo tdnf -y install azurelinux-repos-extended
-    sudo tdnf clean all
-    # TODO:
-    # sudo tdnf -y install "cuda-toolkit-${NVIDIA_CUDA_TOOLKIT_VERSION}"
-    sudo tdnf -y install nvidia-open
-    return 0
-}
-
-install_nvidia_env_with_zypper() {
-    # Un-support WSL
-    if [ "${WSL_VERSION}" != "Unknown" ]; then
-        print_error "${GPU_VENDOR} un-support ${WSL_VERSION} for ${OS_DISTRO}${OS_VERSION_ID}"
-        return 1
-    fi
-    local repo_url="https://developer.download.nvidia.com/compute/cuda/repos/${OS_DISTRO}${OS_VERSION_ID}/${ARCH}/cuda-${OS_DISTRO}${OS_VERSION_ID}.repo"
-    sudo zypper addrepo "${repo_url}"
-    sudo zypper refresh
-    # TODO:
-    # sudo zypper install -y "cuda-toolkit-${NVIDIA_CUDA_TOOLKIT_VERSION}"
-    sudo zypper install -y cuda-drivers
-    return 0
-}
-
-
-install_nvidia_container_env(){
-    if [[ "${GPU_VENDOR}" != "NVIDIA" ]]; then
-        print_error "NVIDIA runtime environment not supported, current gpu vendor: $GPU_VENDOR"
-        return 1
-    fi
-    
-    if [[ "${DEPEND_NVIDIA_CONTAINER_TOOLKIT}" != "Unknown" ]]; then
-        print_success "NVIDIA container toolkit already installed"
-        return 0
-    fi
-    
-    print_log "Installing NVIDIA Container Toolkit..."
-    
-    local NVIDIA_CONTAINER_TOOLKIT_VERSION=1.18.0-1
-    
-    case "${OS_DISTRO}" in
-        ubuntu|debian)
-            # With apt
-            sudo apt-get update && sudo apt-get install -y --no-install-recommends curl gnupg2
-            curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg \
-            && curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | \
-            sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | \
-            sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
-            sudo sed -i -e '/experimental/ s/^#//g' /etc/apt/sources.list.d/nvidia-container-toolkit.list
-            sudo apt-get update
-            sudo apt-get install -y \
-            nvidia-container-toolkit=${NVIDIA_CONTAINER_TOOLKIT_VERSION} \
-            nvidia-container-toolkit-base=${NVIDIA_CONTAINER_TOOLKIT_VERSION} \
-            libnvidia-container-tools=${NVIDIA_CONTAINER_TOOLKIT_VERSION} \
-            libnvidia-container1=${NVIDIA_CONTAINER_TOOLKIT_VERSION}
-        ;;
-        amzn|fedora|kylin|rhel)
-            # With dnf
-            sudo dnf install -y curl
-            curl -s -L https://nvidia.github.io/libnvidia-container/stable/rpm/nvidia-container-toolkit.repo | \
-            sudo tee /etc/yum.repos.d/nvidia-container-toolkit.repo
-            sudo dnf-config-manager --enable nvidia-container-toolkit-experimental
-            sudo dnf install -y \
-            nvidia-container-toolkit-${NVIDIA_CONTAINER_TOOLKIT_VERSION} \
-            nvidia-container-toolkit-base-${NVIDIA_CONTAINER_TOOLKIT_VERSION} \
-            libnvidia-container-tools-${NVIDIA_CONTAINER_TOOLKIT_VERSION} \
-            libnvidia-container1-${NVIDIA_CONTAINER_TOOLKIT_VERSION}
-        ;;
-        opensuse|sles)
-            # With zypper
-            sudo zypper ar https://nvidia.github.io/libnvidia-container/stable/rpm/nvidia-container-toolkit.repo
-            sudo zypper modifyrepo --enable nvidia-container-toolkit-experimental
-            sudo zypper --gpg-auto-import-keys install -y \
-            nvidia-container-toolkit-${NVIDIA_CONTAINER_TOOLKIT_VERSION} \
-            nvidia-container-toolkit-base-${NVIDIA_CONTAINER_TOOLKIT_VERSION} \
-            libnvidia-container-tools-${NVIDIA_CONTAINER_TOOLKIT_VERSION} \
-            libnvidia-container1-${NVIDIA_CONTAINER_TOOLKIT_VERSION}
-        ;;
-        *)
-            print_error "${GPU_VENDOR} un-support OS distro: ${OS_DISTRO}${OS_VERSION_ID}"
-            return
-        ;;
-    esac
-    # Configure Docker，
-    print_log "Configuring Docker..."
-    # Modify /etc/docker/daemon.json
-    sudo nvidia-ctk runtime configure --runtime=docker
-    sudo systemctl restart docker
-    return 0
-}
-
-install_amd_env(){
-    if [[ "${GPU_VENDOR}" != "AMD" ]]; then
-        print_error "AMD runtime environment not supported, current gpu vendor: $GPU_VENDOR"
-        return 1
-    fi
-    print_log "TODO: Installing AMD Runtime Environment..."
-    
     return 0
 }
 
